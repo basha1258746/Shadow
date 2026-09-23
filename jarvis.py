@@ -34,7 +34,8 @@ from voice_output import (
     wait_until_speech_done,
     set_speech_rate,
     get_speech_rate,
-    DEFAULT_SPEECH_RATE
+    DEFAULT_SPEECH_RATE,
+    set_after_sentence_hook
 )
 
 from voice_input import (
@@ -44,6 +45,12 @@ from voice_input import (
     close_stt,
     setup_stt
 )
+
+# After every spoken sentence, drop the
+# microphone audio so Shadow never mistakes
+# her own voice for the user's.
+
+set_after_sentence_hook(flush_audio_queue)
 import backup
 
 MODEL = "qwen3:1.7b"

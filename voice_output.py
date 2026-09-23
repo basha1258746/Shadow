@@ -1,5 +1,6 @@
 import queue
 import threading
+import time
 
 import settings as settings_store
 
@@ -29,49 +30,44 @@ speech_rate = settings_store.get_setting(
 
 speech_queue = queue.Queue()
 
+# Protects worker startup so rapid speak()
+# calls can never create two engines.
+
+worker_lock = threading.Lock()
+
 voice_worker = None
+
 voice_ready = False
-voice_failed = False
+
+# Called after each sentence is spoken so the
+# microphone can drop Shadow's own voice before
+# it is treated as a wake word or a command.
+
+after_sentence_hook = None
 
 
-def setup_voice():
-    global voice_worker
-    global speech_rate
+def set_after_sentence_hook(hook):
+    # Register the microphone-drain function.
+    # Must be callable with no arguments.
 
-    if pyttsx3 is None:
-        if not voice_failed:
-            print(
-                "[Shadow VOICE] pyttsx3 is not installed. "
-                "Voice output is disabled."
-            )
-        return False
+    global after_sentence_hook
 
-    if voice_ready or voice_failed:
-        return voice_ready
-
-    # Restore the speed the user chose in an
-    # earlier session.
-
-    speech_rate = settings_store.get_setting(
-        "speech_rate"
-    )
-
-    # The engine lives inside the worker thread.
-    # All speaking happens there, in the background.
-
-    voice_worker = threading.Thread(
-        target=voice_worker_loop,
-        daemon=True
-    )
-
-    voice_worker.start()
-
-    return True
+    after_sentence_hook = hook
 
 
 def voice_worker_loop():
     global voice_ready
-    global voice_failed
+
+    # Windows COM must be initialized in the
+    # thread that owns the speech engine.
+
+    try:
+        import comtypes
+
+        comtypes.CoInitialize()
+
+    except Exception:
+        pass
 
     try:
         engine = pyttsx3.init()
@@ -94,13 +90,16 @@ def voice_worker_loop():
 
     except Exception as error:
         print(f"[Shadow VOICE] Could not start voice: {error}")
-        voice_failed = True
+
+        _drain_queue()
+
         return
 
     while True:
         item = speech_queue.get()
 
         if item is None:
+            speech_queue.task_done()
             break
 
         # Control messages adjust the engine,
@@ -126,7 +125,77 @@ def voice_worker_loop():
         except Exception as error:
             print(f"[Shadow VOICE] Speak failed: {error}")
 
+        # Give the audio output a moment to fully
+        # finish, then drop whatever the microphone
+        # captured of her own voice.
+
+        time.sleep(0.4)
+
+        if after_sentence_hook is not None:
+            try:
+                after_sentence_hook()
+
+            except Exception as error:
+                print(
+                    f"[Shadow VOICE] Self-voice guard "
+                    f"failed: {error}"
+                )
+
         speech_queue.task_done()
+
+
+def _drain_queue():
+    # Empty the queue if the worker is dying,
+    # so wait_until_speech_done can never hang.
+
+    while not speech_queue.empty():
+        try:
+            speech_queue.get_nowait()
+            speech_queue.task_done()
+
+        except queue.Empty:
+            break
+
+
+def setup_voice():
+    global voice_worker
+    global voice_ready
+
+    if pyttsx3 is None:
+        return False
+
+    with worker_lock:
+
+        # Healthy and running?
+
+        if (
+            voice_ready
+            and voice_worker is not None
+            and voice_worker.is_alive()
+        ):
+            return True
+
+        # Worker still starting up?
+
+        if (
+            voice_worker is not None
+            and voice_worker.is_alive()
+        ):
+            return True
+
+        # No worker, or it died earlier: start a
+        # fresh one (self-healing restart).
+
+        voice_ready = False
+
+        voice_worker = threading.Thread(
+            target=voice_worker_loop,
+            daemon=True
+        )
+
+        voice_worker.start()
+
+    return True
 
 
 def clean_for_speech(text):
@@ -200,8 +269,30 @@ def speak_blocking(text):
 
 
 def wait_until_speech_done():
-    if not voice_ready:
-        return
+    # Wait for the worker to be ready first,
+    # otherwise a fast caller could return
+    # before speaking even starts.
+
+    waited = 0.0
+
+    while waited < 10.0:
+
+        if voice_ready:
+            break
+
+        if voice_worker is None or not voice_worker.is_alive():
+            # No worker will ever speak; if the
+            # queue is also empty there is nothing
+            # to wait for.
+
+            if speech_queue.empty():
+                return
+
+            break
+
+        time.sleep(0.1)
+
+        waited += 0.1
 
     speech_queue.join()
 
@@ -253,7 +344,7 @@ if __name__ == "__main__":
     print("-" * 40)
 
     if setup_voice():
-        print("Queueing three sentences...")
+        print("Queueing sentences rapidly (race test)...")
 
         speak("Hello baa. I am Shadow.")
         speak("This sentence should start before the next one is ready.")

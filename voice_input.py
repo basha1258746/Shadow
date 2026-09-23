@@ -326,6 +326,14 @@ def listen_for_command(max_seconds=7):
     if not setup_stt():
         return ""
 
+    # Drop anything the microphone captured
+    # before this listen started, such as the
+    # tail of Shadow's own last sentence.
+
+    flush_audio_queue()
+
+    time.sleep(0.1)
+
     recognizer.Reset()
 
     collected = []
