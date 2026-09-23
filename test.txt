@@ -1,0 +1,4 @@
+Hello, I am testing Shadow document reading.
+
+My name is Chief.
+Shadow is my local AI assistant.

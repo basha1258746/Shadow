@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Large speech model (downloaded separately)
+vosk-model-small-en-us-0.15/
+
+# Timestamped backups (backup.py manages these)
+backups/
+
+# Editor/tool state
+.freebuff/
+
+# Old debug leftovers
+Shadow_debug.py
+python Shadow_debug.py
