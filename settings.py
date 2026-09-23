@@ -11,9 +11,12 @@ DEFAULT_SETTINGS = {
 
 settings = {}
 
+settings_loaded = False
+
 
 def load_settings():
     global settings
+    global settings_loaded
 
     # Start from the defaults, then overwrite
     # with anything the user has saved.
@@ -34,10 +37,23 @@ def load_settings():
     except Exception as error:
         print(f"[Shadow SETTINGS] Could not load: {error}")
 
+    settings_loaded = True
+
     return settings
 
 
+def _ensure_loaded():
+    # Safety net: any module may import settings
+    # and write without loading first. Load once
+    # automatically so nothing gets clobbered.
+
+    if not settings_loaded:
+        load_settings()
+
+
 def save_settings():
+    _ensure_loaded()
+
     try:
         with open(SETTINGS_FILE, "w", encoding="utf-8") as file:
             json.dump(settings, file, indent=4)
@@ -47,6 +63,8 @@ def save_settings():
 
 
 def get_setting(key):
+    _ensure_loaded()
+
     return settings.get(
         key,
         DEFAULT_SETTINGS.get(key)
@@ -54,6 +72,8 @@ def get_setting(key):
 
 
 def set_setting(key, value):
+    _ensure_loaded()
+
     settings[key] = value
 
     save_settings()
