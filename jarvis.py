@@ -41,7 +41,8 @@ from voice_input import (
     listen_for_command,
     listen_for_wake_word,
     flush_audio_queue,
-    close_stt
+    close_stt,
+    setup_stt
 )
 import backup
 
@@ -54,25 +55,12 @@ VOICE_ENABLED = True
 
 # ---------------- MEMORY ----------------
 
-def load_memory():
-    if not os.path.exists(MEMORY_FILE):
-        return {}
-    try:
-        with open(MEMORY_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except Exception:
-        return {}
+# Memory now lives in its own module with three
+# stores: personal, projects, and documents.
 
+import memory_manager
 
-def save_memory():
-    try:
-        with open(MEMORY_FILE, "w", encoding="utf-8") as file:
-            json.dump(memory, file, indent=4)
-    except Exception as error:
-        print(f"[Shadow] Could not save memory: {error}")
-
-
-memory = load_memory()
+memory_manager.load_memory()
 
 conversation_history = []
 
@@ -91,43 +79,22 @@ reply_already_spoken = False
 
 
 def remember_name(name):
-    memory["user_name"] = name
-    save_memory()
+    memory_manager.set_user_name(name)
     return f"Got it, baa. I will remember your name is {name}."
 
 
 def remember_fact(fact):
-    if "facts" not in memory:
-        memory["facts"] = []
-
-    memory["facts"].append(fact)
-
-    if len(memory["facts"]) > 50:
-        memory["facts"] = memory["facts"][-50:]
-
-    save_memory()
+    memory_manager.add_personal_fact(fact)
     return "Noted, baa. I will remember that."
 
 
 def build_memory_reply():
-    user_name = memory.get("user_name")
-    facts = memory.get("facts", [])
+    reply = memory_manager.personal_summary_text()
 
-    if not user_name and not facts:
+    if not reply:
         return "I don't have anything stored in memory yet, baa."
 
-    lines = ["Here is what I remember, baa:", ""]
-
-    if user_name:
-        lines.append(f"Your name: {user_name}")
-
-    if facts:
-        lines.append("Things you asked me to remember:")
-
-        for fact in facts:
-            lines.append(f"- {fact}")
-
-    return "\n".join(lines)
+    return reply
 
 
 def forget_fact(fact_text):
@@ -136,26 +103,79 @@ def forget_fact(fact_text):
     if not keyword:
         return "Tell me what I should forget, baa."
 
-    facts = memory.get("facts", [])
-
-    keyword_lower = keyword.lower()
-
-    kept = []
-    removed = []
-
-    for fact in facts:
-        if keyword_lower in fact.lower():
-            removed.append(fact)
-        else:
-            kept.append(fact)
+    removed = memory_manager.remove_personal_facts(keyword)
 
     if not removed:
         return f"I don't have anything about '{keyword}' stored, baa."
 
-    memory["facts"] = kept
-    save_memory()
+    return f"Done. I forgot {removed} thing(s) about '{keyword}'."
 
-    return f"Done. I forgot {len(removed)} thing(s) about '{keyword}'."
+
+def remember_project_note(text):
+    # Format: remember project <name>: <note>
+
+    rest = text[len("remember project"):].strip()
+
+    if ":" in rest:
+        project, note = rest.split(":", 1)
+
+        project = project.strip()
+        note = note.strip()
+
+    else:
+        project = "general"
+        note = rest
+
+    if not note:
+        return (
+            "Tell me what to remember about the "
+            "project, baa. Like: remember project "
+            "Shadow: added voice input"
+        )
+
+    memory_manager.add_project_note(project, note)
+
+    return f"Saved to '{project}' project memory, baa."
+
+
+def show_project_memory(text):
+    rest = text[len("show project"):].strip()
+
+    if not rest or rest in ("memory", "notes", "list"):
+        names = memory_manager.list_project_names()
+
+        if not names:
+            return (
+                "No project memories yet, baa. Add one "
+                "with: remember project Shadow: added "
+                "voice today"
+            )
+
+        lines = ["Projects I hold notes on:", ""]
+
+        for name in names:
+            lines.append(f"- {name}")
+
+        lines.append("")
+        lines.append(
+            "Ask: 'show project <name>' or "
+            "'what do you know about <name>'"
+        )
+
+        return "\n".join(lines)
+
+    reply = memory_manager.projects_summary_text(rest)
+
+    if reply is None:
+        return f"I have no notes about '{rest}' yet, baa."
+
+    return reply
+
+
+def knowledge_report():
+    print("[Shadow TOOL: Collecting everything I know...]")
+
+    return memory_manager.knowledge_report_text()
 
 
 # ---------------- OLLAMA ----------------
@@ -454,12 +474,12 @@ def build_system_prompt():
         "from verified Python tools, not from you."
     )
 
-    user_name = memory.get("user_name")
+    user_name = memory_manager.get_user_name()
 
     if user_name:
         prompt += f" The user's name is {user_name}."
 
-    facts = memory.get("facts", [])
+    facts = memory_manager.get_personal_facts()
 
     if facts:
         prompt += " Things the user asked you to remember:"
@@ -691,6 +711,16 @@ def run_document_tool(text):
 
     current_document_path = file_path
 
+    # Remember this document in long-term
+    # document memory so future sessions
+    # know we have read it before.
+
+    memory_manager.add_document_memory(
+        title=os.path.basename(file_path),
+        path=file_path,
+        summary=document_text[:200]
+    )
+
     # Create document chunks
 
     current_document_chunks = split_into_chunks(
@@ -849,7 +879,7 @@ def get_time_greeting():
 def morning_briefing():
     print("[Shadow TOOL: Preparing your briefing...]")
 
-    user_name = memory.get("user_name")
+    user_name = memory_manager.get_user_name()
 
     greeting = get_time_greeting()
 
@@ -869,30 +899,8 @@ def morning_briefing():
 
     # Memory recap.
 
-    facts = memory.get("facts", [])
-
-    if user_name or facts:
-        lines.append("Here is what I remember:")
-
-        if user_name:
-            lines.append(f"- Your name is {user_name}")
-
-        if facts:
-            lines.append(
-                f"- You asked me to remember "
-                f"{len(facts)} thing(s):"
-            )
-
-            for fact in facts[:3]:
-                lines.append(f"  * {fact}")
-
-            if len(facts) > 3:
-                lines.append(
-                    f"  ... and {len(facts) - 3} more."
-                )
-
-    else:
-        lines.append("My memory is empty so far.")
+    for line in memory_manager.briefing_memory_lines():
+        lines.append(line)
 
     lines.append("")
 
@@ -987,8 +995,10 @@ def show_help():
         "- then ask questions about the loaded document\n"
         "- 'summarize the document'\n"
         "- 'close document'\n"
-        "- 'my name is ...' / 'remember that ...' / "
-        "'what do you remember' / 'forget that ...'\n"
+        "- 'remember that ...' / 'remember project <name>: ...'\n"
+        "- 'what do you know about me' - full memory report\n"
+        "- 'show project <name>' - project notes\n"
+        "- 'what do you remember' / 'forget that ...'\n"
         "- 'good morning' - daily briefing\n"
         "- 'show settings' - see all my settings\n"
         "- 'backup now' / 'list backups' / 'restore backup 1'\n"
@@ -1048,6 +1058,25 @@ def get_response(text):
 
     if text_lower.startswith("remember that "):
         return remember_fact(text[14:].strip())
+
+    if text_lower.startswith("remember project"):
+        return remember_project_note(text_lower)
+
+    if text_lower.startswith("show project"):
+        return show_project_memory(text_lower)
+
+    if text_lower.startswith(("what do you know about me", "what all do you know about me")):
+        return knowledge_report()
+
+    if text_lower.startswith("what do you know about"):
+        subject = text_lower[len("what do you know about"):].strip()
+
+        reply = memory_manager.projects_summary_text(subject)
+
+        if reply is None:
+            return f"I have no notes about '{subject}' yet, baa."
+
+        return reply
 
     if "what do you remember" in text_lower:
         return build_memory_reply()
@@ -1263,6 +1292,18 @@ def main():
 
     if voice_enabled:
         speak("Shadow online. Good to see you, baa.")
+
+        # Warm up the ears now so the first
+        # spoken command is heard from the
+        # very first word.
+
+        print("[Shadow EARS] Warming up microphone...")
+
+        try:
+            setup_stt()
+
+        except Exception as error:
+            print(f"[Shadow EARS] Warm-up failed: {error}")
 
     listen_mode = False
 

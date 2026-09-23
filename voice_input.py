@@ -1,5 +1,10 @@
 import os
 import queue
+import json
+import array
+import time
+
+import settings as settings_store
 
 try:
     from vosk import Model, KaldiRecognizer
@@ -18,6 +23,21 @@ except ImportError:
 MODEL_DIR = "vosk-model-small-en-us-0.15"
 
 SAMPLE_RATE = 16000
+
+# The laptop microphone is a multi-channel SST
+# array. Opening it at a low simple rate makes
+# Windows deliver processed garbage, so we open
+# it NATIVELY and convert ourselves.
+
+INPUT_RATE = 48000
+
+INPUT_CHANNEL_CHOICES = (4, 2, 1)
+
+DOWN_FACTOR = INPUT_RATE // SAMPLE_RATE
+
+input_channels = 1
+
+effective_down_factor = 1
 
 # All the ways the user might call Shadow.
 
@@ -38,12 +58,79 @@ audio_queue = None
 input_ready = False
 
 
+def _list_input_devices():
+    import sounddevice as sd
+
+    devices = []
+
+    for index, device in enumerate(sd.query_devices()):
+        if device["max_input_channels"] > 0:
+            devices.append((index, device))
+
+    return devices
+
+
+def _choose_input_device():
+    # Some laptops expose several microphones and
+    # the Windows default can be a broken
+    # beamformed device. Probe candidates in a
+    # smart order and remember the winner.
+
+    import sounddevice as sd
+
+    devices = _list_input_devices()
+
+    # 1. A previously saved working device.
+
+    saved_id = settings_store.get_setting(
+        "mic_device_id"
+    )
+
+    if saved_id is not None:
+        for index, device in devices:
+            if index == saved_id:
+                return index, device["name"]
+
+    # 2. The Windows default input.
+
+    try:
+        default_id = sd.query_devices(
+            kind="input"
+        )["index"]
+
+        for index, device in devices:
+            if index == default_id:
+                return index, device["name"]
+
+    except Exception:
+        pass
+
+    # 3. A fully-named Realtek array device
+    #    (the working twin on this laptop).
+
+    for index, device in devices:
+        if device["name"].strip() == (
+            "Microphone Array (Realtek(R) Audio)"
+        ):
+            return index, device["name"]
+
+    # 4. Anything else that can capture.
+
+    for index, device in devices:
+        if "Stereo Mix" not in device["name"]:
+            return index, device["name"]
+
+    return None, None
+
+
 def setup_stt():
     global model
     global recognizer
     global mic_stream
     global audio_queue
     global input_ready
+    global input_channels
+    global effective_down_factor
 
     if not VOSK_AVAILABLE:
         print(
@@ -81,21 +168,99 @@ def setup_stt():
             SAMPLE_RATE
         )
 
+        device_id, device_name = _choose_input_device()
+
+        if device_id is None:
+            print(
+                "[Shadow EARS] No usable microphone found."
+            )
+            return False
+
         audio_queue = queue.Queue()
 
-        mic_stream = sd.RawInputStream(
-            samplerate=SAMPLE_RATE,
-            blocksize=8000,
-            dtype="int16",
-            channels=1,
-            callback=audio_callback
-        )
+        # Try the native multi-channel, high-rate
+        # format first; fall back to simpler ones.
 
-        mic_stream.start()
+        opened = False
+
+        for channels in INPUT_CHANNEL_CHOICES:
+            try:
+                mic_stream = sd.RawInputStream(
+                    samplerate=INPUT_RATE,
+                    blocksize=8000,
+                    dtype="int16",
+                    channels=channels,
+                    device=device_id,
+                    callback=audio_callback
+                )
+
+                mic_stream.start()
+
+                # Give the audio driver a moment to
+                # settle before we rely on callbacks.
+
+                time.sleep(0.5)
+
+                input_channels = channels
+
+                effective_down_factor = (
+                    INPUT_RATE // SAMPLE_RATE
+                )
+
+                opened = True
+
+                break
+
+            except Exception:
+                mic_stream = None
+
+        if not opened:
+            # Last resort: the simple old way.
+
+            try:
+                mic_stream = sd.RawInputStream(
+                    samplerate=SAMPLE_RATE,
+                    blocksize=8000,
+                    dtype="int16",
+                    channels=1,
+                    device=device_id,
+                    callback=audio_callback
+                )
+
+                mic_stream.start()
+
+                input_channels = 1
+
+                effective_down_factor = 1
+
+                opened = True
+
+            except Exception as error:
+                print(
+                    f"[Shadow EARS] Could not open "
+                    f"microphone: {error}"
+                )
+
+                return False
+
+        if not opened:
+            return False
+
+        # Remember the working microphone so it is
+        # used first next time.
+
+        settings_store.set_setting(
+            "mic_device_id",
+            device_id
+        )
 
         input_ready = True
 
-        print("[Shadow EARS] Microphone ready.")
+        print(
+            f"[Shadow EARS] Microphone ready: "
+            f"{device_name} "
+            f"(device {device_id})"
+        )
 
         return True
 
@@ -109,7 +274,50 @@ def setup_stt():
 
 
 def audio_callback(indata, frames, time_info, status):
-    audio_queue.put(bytes(indata))
+    # The mic delivers multi-channel audio at
+    # INPUT_RATE. Convert it to mono at
+    # SAMPLE_RATE for the recognizer.
+
+    if effective_down_factor == 1 and input_channels == 1:
+        audio_queue.put(bytes(indata))
+        return
+
+    import array as array_module
+
+    samples = array_module.array("h")
+
+    samples.frombytes(bytes(indata))
+
+    mono = samples[0::input_channels]
+
+    if effective_down_factor > 1:
+        factor = effective_down_factor
+
+        usable = (len(mono) // factor) * factor
+
+        out_count = usable // factor
+
+        converted = array.array(
+            "h",
+            bytes(2 * out_count)
+        )
+
+        out_index = 0
+
+        for start in range(0, usable, factor):
+            total = 0
+
+            for offset in range(factor):
+                total += mono[start + offset]
+
+            converted[out_index] = total // factor
+
+            out_index += 1
+
+        audio_queue.put(converted.tobytes())
+
+    else:
+        audio_queue.put(mono.tobytes())
 
 
 def listen_for_command(max_seconds=7):
@@ -126,10 +334,23 @@ def listen_for_command(max_seconds=7):
 
     frames_needed = int(SAMPLE_RATE * max_seconds)
 
+    quiet_rounds = 0
+
     try:
         while total_frames < frames_needed:
 
-            data = audio_queue.get(timeout=1.0)
+            try:
+                data = audio_queue.get(timeout=1.0)
+
+            except queue.Empty:
+                quiet_rounds += 1
+
+                if quiet_rounds >= 3:
+                    raise
+
+                continue
+
+            quiet_rounds = 0
 
             collected.append(data)
 
@@ -140,8 +361,6 @@ def listen_for_command(max_seconds=7):
                 result_text = (
                     recognizer.Result()
                 )
-
-                import json
 
                 final_part = json.loads(
                     result_text
@@ -155,8 +374,6 @@ def listen_for_command(max_seconds=7):
                     total_frames = len(data) // 2
 
         # Check for a final result one more time.
-
-        import json
 
         final_part = json.loads(
             recognizer.FinalResult()
@@ -259,12 +476,23 @@ def listen_for_wake_word(max_seconds=30):
 
     frames_needed = int(SAMPLE_RATE * max_seconds)
 
-    import json
+    quiet_rounds = 0
 
     try:
         while total_frames < frames_needed:
 
-            data = audio_queue.get(timeout=1.0)
+            try:
+                data = audio_queue.get(timeout=1.0)
+
+            except queue.Empty:
+                quiet_rounds += 1
+
+                if quiet_rounds >= 3:
+                    raise
+
+                continue
+
+            quiet_rounds = 0
 
             collected.append(data)
 
