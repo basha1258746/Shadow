@@ -6,7 +6,8 @@ SETTINGS_FILE = "settings.json"
 DEFAULT_SETTINGS = {
     "voice_enabled": True,
     "speech_rate": 170,
-    "mic_device_id": None
+    "mic_device_id": None,
+    "semantic_search": True
 }
 
 settings = {}

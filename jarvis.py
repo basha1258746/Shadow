@@ -22,6 +22,8 @@ from document_reader import (
     search_chunks
 )
 
+import semantic_search
+
 # Load saved settings BEFORE the voice modules
 # start, so they pick up the stored speed.
 
@@ -757,11 +759,24 @@ def run_document_tool(text):
 
 
 def answer_document_question(question):
-    relevant_chunks = search_chunks(
-        current_document_chunks,
-        question,
-        max_results=3
-    )
+    # Meaning-based retrieval when enabled,
+    # with automatic keyword fallback inside
+    # semantic_search if Ollama is unavailable.
+
+    if settings_store.get_setting("semantic_search"):
+
+        relevant_chunks = semantic_search.semantic_search_chunks(
+            current_document_chunks,
+            question,
+            max_results=3
+        )
+
+    else:
+        relevant_chunks = search_chunks(
+            current_document_chunks,
+            question,
+            max_results=3
+        )
 
     if relevant_chunks:
         context = "\n\n---\n\n".join(relevant_chunks)
@@ -1008,6 +1023,7 @@ def show_help():
         "- 'what do you remember' / 'forget that ...'\n"
         "- 'good morning' - daily briefing\n"
         "- 'show settings' - see all my settings\n"
+        "- 'semantic on' / 'semantic off' - meaning-based document search\n"
         "- 'backup now' / 'list backups' / 'restore backup 1'\n"
         "- 'voice on' / 'voice off' - toggle speech\n"
         "- 'speak faster' / 'speak slower' / 'speak normal'\n"
@@ -1132,6 +1148,35 @@ def get_response(text):
 
     if text_lower == "voice off":
         return handle_voice_command(False)
+
+    if text_lower in (
+        "semantic on",
+        "semantic search on"
+    ):
+        settings_store.set_setting(
+            "semantic_search",
+            True
+        )
+
+        return (
+            "Semantic search is ON, baa. I will now "
+            "find answers by meaning, not just "
+            "matching words."
+        )
+
+    if text_lower in (
+        "semantic off",
+        "semantic search off"
+    ):
+        settings_store.set_setting(
+            "semantic_search",
+            False
+        )
+
+        return (
+            "Semantic search is OFF, baa. I will use "
+            "the older keyword matching."
+        )
 
     if text_lower in ("close document", "clear document", "forget document"):
         return close_document()
