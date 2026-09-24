@@ -22,6 +22,32 @@ except ImportError:
 
 MODEL_DIR = "vosk-model-small-en-us-0.15"
 
+# Speech models, best first. The 0.22-lgraph
+# generation is markedly more accurate in noisy
+# rooms than the tiny 0.15 model (7.82 vs 9.85
+# word error rate on the standard benchmark)
+# while still small enough for an 8 GB laptop.
+# The tiny model remains the automatic fallback
+# if the better one is ever missing.
+
+PREFERRED_MODELS = (
+    "vosk-model-en-us-0.22-lgraph",
+    "vosk-model-small-en-us-0.15",
+)
+
+
+def _choose_model_dir():
+    # First available model from the preference
+    # list, as an absolute path.
+
+    for name in PREFERRED_MODELS:
+        path = os.path.abspath(name)
+
+        if os.path.isdir(path):
+            return path
+
+    return None
+
 SAMPLE_RATE = 16000
 
 # IMPORTANT LESSON FROM TESTING (2026-09-23):
@@ -336,12 +362,12 @@ def setup_stt():
 
     _reset_stream()
 
-    model_path = os.path.abspath(MODEL_DIR)
+    model_path = _choose_model_dir()
 
-    if not os.path.isdir(model_path):
+    if model_path is None:
         print(
-            "[Shadow EARS] Speech model folder not found: "
-            f"{model_path}"
+            "[Shadow EARS] No speech model folder found. "
+            f"Looked for: {', '.join(PREFERRED_MODELS)}"
         )
         return False
 
@@ -351,7 +377,10 @@ def setup_stt():
         # so no stale audio state carries over.
 
         if model is None:
-            print("[Shadow EARS] Loading speech model...")
+            print(
+                "[Shadow EARS] Loading speech model: "
+                f"{os.path.basename(model_path)}..."
+            )
 
             model = Model(model_path)
 

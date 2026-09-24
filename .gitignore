@@ -2,8 +2,9 @@
 __pycache__/
 *.pyc
 
-# Large speech model (downloaded separately)
+# Large speech models (downloaded separately)
 vosk-model-small-en-us-0.15/
+vosk-model-en-us-0.22-lgraph/
 
 # Timestamped backups (backup.py manages these)
 backups/
