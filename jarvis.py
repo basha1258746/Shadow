@@ -38,6 +38,8 @@ import window_watcher
 
 import phone_server
 
+import tray_icon
+
 # Load saved settings BEFORE the voice modules
 # start, so they pick up the stored speed.
 
@@ -51,7 +53,9 @@ from voice_output import (
     set_speech_rate,
     get_speech_rate,
     DEFAULT_SPEECH_RATE,
-    set_after_sentence_hook
+    set_after_sentence_hook,
+    stop_speech,
+    set_muted
 )
 
 from voice_input import (
@@ -919,6 +923,37 @@ def check_ollama_status():
         return False
 
 
+def _tray_exit():
+    # Tray menu 'Exit Shadow': stop everything
+    # and end the process.
+
+    import os
+
+    try:
+        close_stt()
+
+    except Exception:
+        pass
+
+    try:
+        stop_speech()
+
+    except Exception:
+        pass
+
+    os._exit(0)
+
+
+def _tray_stop_speech():
+    # Tray menu 'Stop speaking now': drop the
+    # speech queue and mute until the next
+    # message.
+
+    stop_speech()
+
+    set_muted(True)
+
+
 def get_time_greeting():
     hour = time.localtime().tm_hour
 
@@ -1562,7 +1597,25 @@ def voice_chat_mode():
     wake_mode = True
 
     while True:
+        # The tray pause button freezes listening:
+        # she idles until chief resumes her from
+        # the tray menu.
+
+        if tray_icon.pause_event.is_set():
+            tray_icon.set_state(
+                listening=False,
+                status_text="mic paused from tray",
+            )
+
+            time.sleep(0.4)
+            continue
+
         if wake_mode:
+            tray_icon.set_state(
+                listening=True,
+                status_text="listening for Shadow",
+            )
+
             print("[VOICE CHAT] ...listening for 'Shadow'...")
 
             found, command = listen_for_wake_word(30)
@@ -1571,6 +1624,11 @@ def voice_chat_mode():
                 continue
 
             print("[VOICE CHAT] Wake word detected!")
+
+            tray_icon.set_state(
+                listening=False,
+                status_text="working on your command",
+            )
 
             if command:
                 print(f"You (voice): {command}")
@@ -1642,6 +1700,21 @@ def voice_chat_mode():
 
 
 def main():
+    # The tray icon comes alive in every mode:
+    # she is visible and controllable from the
+    # clock, always.
+
+    try:
+        tray_icon.actions["on_exit"] = _tray_exit
+        tray_icon.actions["on_stop_speech"] = (
+            _tray_stop_speech
+        )
+
+        tray_icon.start()
+
+    except Exception as error:
+        print(f"[ZOYA TRAY] Icon unavailable: {error}")
+
     # Launch the desktop window with:
     #   python Shadow.py gui
 
@@ -1710,13 +1783,15 @@ def main():
         # spoken command is heard from the
         # very first word.
 
-        print("[Shadow EARS] Warming up microphone...")
+        print("[ZOYA EARS] Warming up microphone...")
 
         try:
             setup_stt()
 
         except Exception as error:
-            print(f"[Shadow EARS] Warm-up failed: {error}")
+            print(f"[ZOYA EARS] Warm-up failed: {error}")
+
+    tray_icon.set_state(status_text="ready")
 
     listen_mode = False
 
