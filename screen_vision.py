@@ -183,13 +183,18 @@ def describe_screen(question=None):
 
     # Very long OCR text would slow the small
     # model down; keep the most useful part.
+    # Descriptions need less text than
+    # targeted questions, so they trim harder
+    # for a faster reply.
 
-    limited = screen_text[:6000]
+    char_limit = 6000 if question else 4000
 
-    if len(screen_text) > 6000:
+    limited = screen_text[:char_limit]
+
+    if len(screen_text) > char_limit:
         limited += (
             "\n\n[Screen text was limited to the "
-            "first 6000 characters.]"
+            f"first {char_limit} characters.]"
         )
 
     if question:

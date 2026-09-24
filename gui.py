@@ -145,6 +145,21 @@ class ShadowGUI:
         )
         self.stop_speech_button.pack(side="left", padx=6, pady=6)
 
+        self.eyes_button = tk.Button(
+            toolbar,
+            text="👁 Eyes",
+            font=self.font_name,
+            bg="#21262d",
+            fg=TEXT,
+            activebackground="#2d333b",
+            activeforeground=TEXT,
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            command=self._on_eyes,
+        )
+        self.eyes_button.pack(side="left", padx=6, pady=6)
+
         # ---- Chat area ----
 
         self.chat = tk.Text(
@@ -579,6 +594,17 @@ class ShadowGUI:
 
         self.entry.delete(0, "end")
         self._run_user_text("good morning")
+
+    def _on_eyes(self):
+        # One click: capture the screen, read it,
+        # and describe it - the same flow as typing
+        # 'what do you see'.
+
+        if self.busy.is_set() or self.wake_mode:
+            return
+
+        self.entry.delete(0, "end")
+        self._run_user_text("what do you see")
 
     def _on_stop_speaking(self):
         # Mute future sentences and drop whatever
