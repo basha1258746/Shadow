@@ -203,6 +203,11 @@ class ShadowGUI:
             foreground=ERR_COLOR,
             font=self.font_body,
         )
+        self.chat.tag_configure(
+            "mono",
+            foreground=TEXT,
+            font=("Consolas", 9),
+        )
 
         # Scrollbar (auto-hides when not needed).
 
@@ -324,9 +329,25 @@ class ShadowGUI:
             self.root.after(50, self._drain_ui_queue)
 
     def _append_chat(self, text, tag):
+        # Briefings may contain an ASCII QR code:
+        # those lines need a monospaced font to
+        # stay scannable, everything else keeps
+        # the normal font.
+
+        needs_mono = (
+            tag == "Shadow"
+            and "█" in text
+        )
+
         def apply():
             self.chat.configure(state="normal")
-            self.chat.insert("end", text + "\n\n", tag)
+
+            self.chat.insert(
+                "end",
+                text + "\n\n",
+                "mono" if needs_mono else tag,
+            )
+
             self.chat.see("end")
             self.chat.configure(state="disabled")
 

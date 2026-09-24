@@ -166,6 +166,90 @@ if (localStorage.getItem('Shadow_pin')) {
 """
 
 
+def get_primary_url():
+    # The first LAN URL, used in briefings.
+
+    if server is None:
+        return None
+
+    ips = get_lan_ips()
+
+    if not ips:
+        return None
+
+    return f"http://{ips[0]}:{SERVER_PORT}"
+
+
+def get_connection_qr():
+    # A scannable QR code as ASCII text that
+    # encodes the connection URL. Dark modules
+    # are two spaces (the dark background shows
+    # through); light modules are block
+    # characters, so the code reads correctly
+    # on dark terminals and in the dark GUI.
+
+    if server is None:
+        return None
+
+    try:
+        import qrcode
+
+        url = get_primary_url()
+
+        if url is None:
+            return None
+
+        qr = qrcode.QRCode(border=2)
+
+        qr.add_data(url)
+
+        qr.make(fit=True)
+
+        matrix = qr.get_matrix()
+
+        lines = []
+
+        for row in matrix:
+            line = ""
+
+            for cell in row:
+                line += "  " if cell else "██"
+
+            lines.append(line)
+
+        return "\n".join(lines)
+
+    except ImportError:
+        return None
+
+
+def get_connection_text():
+    # Briefing-ready connection info: URL, PIN,
+    # and the QR code when available.
+
+    if server is None:
+        return None
+
+    url = get_primary_url()
+
+    lines = [
+        "Phone access is ON:",
+        f"Open {url} on your phone",
+        f"PIN: {pin_code}",
+    ]
+
+    qr = get_connection_qr()
+
+    if qr:
+        lines.append("")
+        lines.append(
+            "Or scan this with your phone camera:"
+        )
+        lines.append(qr)
+
+    return "\n".join(lines)
+
+
 def get_lan_ips():
     # Every IPv4 address this laptop has on the
     # network, so chief can pick the right one.

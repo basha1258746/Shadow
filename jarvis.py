@@ -987,6 +987,15 @@ def morning_briefing():
         f"CPU cores: {info.get('CPU Cores', 'unknown')}"
     )
 
+    # Phone connection info with QR code when
+    # phone access is running.
+
+    phone_info = phone_server.get_connection_text()
+
+    if phone_info:
+        lines.append("")
+        lines.append(phone_info)
+
     lines.append("")
     lines.append("What can I do for you today, chief?")
 
