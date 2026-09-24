@@ -28,6 +28,8 @@ import screen_vision
 
 import computer_control
 
+import window_watcher
+
 # Load saved settings BEFORE the voice modules
 # start, so they pick up the stored speed.
 
@@ -1018,6 +1020,48 @@ def handle_voice_command(turn_on):
     return "Voice output is OFF, baa."
 
 
+def summarize_window_text(text):
+    # Short one-sentence summary of what a
+    # watched window now shows. Called by the
+    # watcher thread whenever content changes.
+
+    limited = text[:2500]
+
+    prompt = f"""
+You are Shadow.
+
+The text below was read from a window the
+user asked you to watch. It just changed.
+
+Describe in ONE short sentence what the
+window now shows.
+
+WINDOW TEXT:
+----------------
+{limited}
+----------------
+"""
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are Shadow. Summarize the "
+                "window content in one short "
+                "sentence. Use only the provided "
+                "text."
+            )
+        },
+
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+
+    return ask_ollama(messages)
+
+
 def show_help():
     return (
         "Here is what I can do, baa:\n"
@@ -1041,6 +1085,8 @@ def show_help():
         "- 'scroll down 5' / 'type hello' / 'press enter'\n"
         "  (computer actions ALWAYS ask yes/no first - say no to cancel;\n"
         "   slam the mouse into the top-left corner for emergency stop)\n"
+        "- 'watch notepad' - watch a window, announce changes\n"
+        "- 'watch status' / 'stop watching'\n"
         "- 'backup now' / 'list backups' / 'restore backup 1'\n"
         "- 'voice on' / 'voice off' - toggle speech\n"
         "- 'speak faster' / 'speak slower' / 'speak normal'\n"
@@ -1143,6 +1189,38 @@ def get_response(text):
             f"I am about to {description}. "
             "Shall I? Say yes or no, baa."
         )
+
+    # ---- WINDOW WATCHER ----
+
+    if text_lower == "watch status":
+        return window_watcher.watch_status_text()
+
+    if text_lower == "stop watching":
+        return window_watcher.stop_watching()
+
+    if text_lower == "watch":
+        return (
+            "Tell me which window to watch, baa. "
+            "Like: watch notepad - or watch chrome."
+        )
+
+    if text_lower.startswith("watch "):
+        query = text[6:].strip()
+
+        if not query:
+            return (
+                "Tell me which window to watch, "
+                "baa. Like: watch notepad"
+            )
+
+        ok, message = window_watcher.start_watching(
+            query,
+            summarize=summarize_window_text,
+            speak_fn=speak,
+            voice_on=lambda: voice_enabled,
+        )
+
+        return message
 
     if text_lower in ("help", "what can you do"):
         return show_help()

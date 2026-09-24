@@ -97,53 +97,24 @@ def read_screen_text():
     # text). Text may be empty if nothing
     # readable is on screen.
 
-    from document_reader import setup_ocr
+    window_title = get_active_window_title()
+
+    from document_reader import setup_ocr, ocr_image_safe
 
     if not setup_ocr():
-        return "", ""
+        return window_title, ""
 
     shot = capture_screen()
 
     if shot is None:
-        return "", ""
-
-    window_title = get_active_window_title()
-
-    import pytesseract
+        return window_title, ""
 
     try:
         print(
             "[Shadow EYES] Reading the screen..."
         )
 
-        # Take the OCR output as raw BYTES and
-        # decode ourselves: Tesseract emits
-        # UTF-8, but pytesseract's default text
-        # mode decodes with the Windows ANSI
-        # codec, which crashes on characters
-        # like smart quotes when they appear on
-        # screen.
-
-        try:
-            raw_output = pytesseract.image_to_string(
-                shot,
-                lang="eng",
-                output_type=pytesseract.Output.BYTES,
-            )
-
-            text = raw_output.decode(
-                "utf-8",
-                errors="replace",
-            )
-
-        except AttributeError:
-            # Older pytesseract without the
-            # Output enum: plain call.
-
-            text = pytesseract.image_to_string(
-                shot,
-                lang="eng",
-            )
+        text = ocr_image_safe(shot)
 
     except Exception as error:
         print(

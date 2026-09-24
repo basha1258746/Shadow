@@ -99,6 +99,60 @@ def setup_ocr():
     return True
 
 
+def ocr_image_safe(image):
+    # OCR via the tesseract CLI with raw UTF-8
+    # byte capture. Immune to the Windows ANSI
+    # decode crash that pytesseract's text mode
+    # suffers on non-ASCII screen content
+    # (smart quotes etc).
+
+    import subprocess
+    import tempfile
+
+    tesseract_path = find_tesseract_path()
+
+    if pytesseract is None or Image is None:
+        return ""
+
+    if not tesseract_path:
+        return ""
+
+    tmp = tempfile.NamedTemporaryFile(
+        suffix=".png", delete=False
+    )
+
+    tmp_path = tmp.name
+    tmp.close()
+
+    try:
+        image.save(tmp_path)
+
+        result = subprocess.run(
+            [
+                tesseract_path,
+                tmp_path,
+                "stdout",
+                "-l", "eng",
+            ],
+            capture_output=True,
+            timeout=60,
+        )
+
+        return result.stdout.decode(
+            "utf-8", errors="replace"
+        ).strip()
+
+    except Exception as error:
+        print(f"[Shadow OCR] Safe OCR failed: {error}")
+        return ""
+
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
 def clean_search_words(text):
     text = text.lower()
     
