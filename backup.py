@@ -170,7 +170,7 @@ def create_backup_text():
     path, copied, missing = create_backup()
 
     lines = [
-        f"Backup created, baa.",
+        f"Backup created, chief.",
         f"Location: {path}",
         f"Files saved: {copied}"
     ]
@@ -189,12 +189,12 @@ def list_backups_text():
 
     if not names:
         return (
-            "No backups yet, baa. "
+            "No backups yet, chief. "
             "Say 'backup now' to create one."
         )
 
     lines = [
-        f"I have {len(names)} backup(s), baa "
+        f"I have {len(names)} backup(s), chief "
         f"(newest first, keeping {MAX_BACKUPS}):",
         ""
     ]
@@ -218,7 +218,7 @@ def restore_backup_text(identifier=None):
 
     if result is None:
         return (
-            "I could not find that backup, baa. "
+            "I could not find that backup, chief. "
             "Say 'list backups' to see what exists."
         )
 

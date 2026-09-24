@@ -361,7 +361,7 @@ if __name__ == "__main__":
     if setup_voice():
         print("Queueing sentences rapidly (race test)...")
 
-        speak("Hello baa. I am Shadow.")
+        speak("Hello chief. I am Shadow.")
         speak("This sentence should start before the next one is ready.")
         speak("If you hear these in order, the queue works.")
 

@@ -194,7 +194,7 @@ def personal_summary_text():
     if not user_name and not facts:
         return ""
 
-    lines = ["Here is what I remember, baa:", ""]
+    lines = ["Here is what I remember, chief:", ""]
 
     if user_name:
         lines.append(f"Your name: {user_name}")
@@ -249,7 +249,7 @@ def projects_summary_text(project):
     display = project.strip() or "general"
 
     if not notes:
-        return f"No notes for '{display}' yet, baa."
+        return f"No notes for '{display}' yet, chief."
 
     lines = [
         f"Notes about '{display}' "
@@ -313,7 +313,7 @@ def knowledge_report_text():
     documents = memory["documents"]
 
     lines = [
-        "Here is everything I know about you, baa:",
+        "Here is everything I know about you, chief:",
         f"(as of {datetime.now().strftime('%Y-%m-%d %H:%M')})",
         ""
     ]
@@ -406,7 +406,7 @@ def knowledge_report_text():
     lines.append("")
 
     lines.append(
-        "Your memory stays on this laptop, baa. "
+        "Your memory stays on this laptop, chief. "
         "Say 'forget that ...' to remove a personal fact."
     )
 
