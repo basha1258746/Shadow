@@ -250,6 +250,40 @@ def get_connection_text():
     return "\n".join(lines)
 
 
+def get_connection_image():
+    # A real scannable QR as a PIL image (black
+    # on white, large modules) for popping up in
+    # a window. None when phone access is off.
+
+    if server is None:
+        return None
+
+    try:
+        import qrcode
+
+        url = get_primary_url()
+
+        if url is None:
+            return None
+
+        qr = qrcode.QRCode(
+            border=4,
+            box_size=10,
+        )
+
+        qr.add_data(url)
+
+        qr.make(fit=True)
+
+        return qr.make_image(
+            fill_color="black",
+            back_color="white",
+        ).convert("RGB")
+
+    except ImportError:
+        return None
+
+
 def get_lan_ips():
     # Every IPv4 address this laptop has on the
     # network, so chief can pick the right one.

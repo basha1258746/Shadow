@@ -954,6 +954,77 @@ def _tray_stop_speech():
     set_muted(True)
 
 
+def _tray_show_qr():
+    # Tray menu 'Show phone QR': pop a window
+    # with a big scannable code and the PIN.
+
+    import tkinter as tk
+
+    from phone_server import (
+        get_connection_image,
+        get_primary_url,
+        pin_code,
+    )
+
+    image = get_connection_image()
+
+    if image is None:
+        # Phone access is off: turn it on for
+        # chief right away.
+
+        start_server()
+
+        image = get_connection_image()
+
+    if image is None:
+        return
+
+    root = tk.Tk()
+
+    root.title("Shadow - Phone Connection")
+
+    root.configure(bg="white")
+
+    url = get_primary_url() or ""
+
+    from PIL import ImageTk
+
+    photo = ImageTk.PhotoImage(image)
+
+    tk.Label(
+        root,
+        image=photo,
+        bg="white",
+    ).pack(padx=20, pady=(20, 10))
+
+    tk.Label(
+        root,
+        text=url,
+        font=("Consolas", 12, "bold"),
+        bg="white",
+        fg="#1f6feb",
+    ).pack()
+
+    tk.Label(
+        root,
+        text=f"PIN: {pin_code}",
+        font=("Consolas", 12),
+        bg="white",
+        fg="#333333",
+    ).pack(pady=(4, 16))
+
+    # Keep a reference so the photo is not
+    # garbage-collected.
+
+    root._qr_photo = photo
+
+    root.attributes("-topmost", True)
+
+    root.after(120000, root.destroy)
+
+    root.mainloop()
+
+
 def get_time_greeting():
     hour = time.localtime().tm_hour
 
@@ -1708,6 +1779,9 @@ def main():
         tray_icon.actions["on_exit"] = _tray_exit
         tray_icon.actions["on_stop_speech"] = (
             _tray_stop_speech
+        )
+        tray_icon.actions["on_show_qr"] = (
+            _tray_show_qr
         )
 
         tray_icon.start()

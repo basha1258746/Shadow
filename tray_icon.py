@@ -185,6 +185,17 @@ def _toggle_mute(icon, item):
         pass
 
 
+def _show_qr(icon, item):
+    handler = actions.get("on_show_qr")
+
+    if handler:
+        try:
+            handler()
+
+        except Exception:
+            pass
+
+
 def _stop_speech(icon, item):
     handler = actions.get("on_stop_speech")
 
@@ -240,6 +251,10 @@ def start():
                     else "Mute voice"
                 ),
                 _toggle_mute,
+            ),
+            pystray.MenuItem(
+                "Show phone QR",
+                _show_qr,
             ),
             pystray.MenuItem(
                 "Stop speaking now",
