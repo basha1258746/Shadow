@@ -24,6 +24,8 @@ from document_reader import (
 
 import semantic_search
 
+import screen_vision
+
 # Load saved settings BEFORE the voice modules
 # start, so they pick up the stored speed.
 
@@ -1024,6 +1026,8 @@ def show_help():
         "- 'good morning' - daily briefing\n"
         "- 'show settings' - see all my settings\n"
         "- 'semantic on' / 'semantic off' - meaning-based document search\n"
+        "- 'what do you see' - look at my screen and describe it\n"
+        "- 'look at my screen and <question>' - ask about what is on screen\n"
         "- 'backup now' / 'list backups' / 'restore backup 1'\n"
         "- 'voice on' / 'voice off' - toggle speech\n"
         "- 'speak faster' / 'speak slower' / 'speak normal'\n"
@@ -1180,6 +1184,59 @@ def get_response(text):
 
     if text_lower in ("close document", "clear document", "forget document"):
         return close_document()
+
+    if text_lower in (
+        "what do you see",
+        "look at my screen",
+        "look at the screen",
+        "describe my screen",
+        "describe the screen",
+        "read my screen",
+        "read the screen",
+    ) or text_lower.startswith(
+        (
+            "what do you see ",
+            "look at my screen ",
+            "describe my screen ",
+            "read my screen ",
+        )
+    ):
+        # Screen vision: capture ONLY on request,
+        # OCR it, and let the model describe it.
+
+        question = None
+
+        for trigger in (
+            "what do you see",
+            "look at my screen",
+            "describe my screen",
+            "read my screen",
+        ):
+            if text_lower.startswith(trigger):
+                remainder = text[
+                    len(trigger):
+                ].strip(" ,.?-")
+
+                lowered_remainder = (
+                    remainder.lower()
+                )
+
+                if lowered_remainder and lowered_remainder not in (
+                    "on my screen",
+                    "on the screen",
+                    "right now",
+                    "now",
+                ):
+                    question = remainder
+
+                    if question.lower().startswith("and "):
+                        question = question[4:].strip()
+
+                break
+
+        return screen_vision.describe_screen(
+            question
+        )
 
     # If a document is loaded, treat the message as a
     # question about that document.
