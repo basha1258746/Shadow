@@ -5,6 +5,7 @@ __pycache__/
 # Large speech models (downloaded separately)
 vosk-model-small-en-us-0.15/
 vosk-model-en-us-0.22-lgraph/
+piper_voices/
 
 # Timestamped backups (backup.py manages these)
 backups/

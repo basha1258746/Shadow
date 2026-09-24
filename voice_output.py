@@ -1,4 +1,6 @@
+import os
 import queue
+import tempfile
 import threading
 import time
 
@@ -6,8 +8,18 @@ import settings as settings_store
 
 try:
     import pyttsx3
+
 except ImportError:
     pyttsx3 = None
+
+# ---------------- THE VOICE OF ZOYA ----------------
+#
+# Primary: Piper neural TTS with the warm "Amy"
+# voice - vastly more natural than the robotic
+# Windows voices, fully offline. Fallback: the
+# old Windows engine (Zira) if Piper or the
+# voice files are missing, or if synthesis ever
+# fails at runtime.
 
 PREFERRED_VOICE = "zira"
 
@@ -17,14 +29,33 @@ MIN_SPEECH_RATE = 100
 
 MAX_SPEECH_RATE = 280
 
-# Current requested speed in words per minute.
-# The worker applies it to the engine.
-# Reads the saved value if settings are
-# already loaded, otherwise the default.
+PIPER_DIR = "piper_voices"
 
-speech_rate = settings_store.get_setting(
-    "speech_rate"
+PIPER_MODEL = os.path.join(
+    PIPER_DIR,
+    "en_US-amy-medium.onnx",
 )
+
+# Piper speed control: length_scale is how much
+# LONGER than normal she stretches sounds, so a
+# faster speech rate means a SMALLER length
+# scale. 170 wpm (the default) maps to 1.0.
+
+PIPER_BASE_RATE = DEFAULT_SPEECH_RATE
+
+
+def _piper_available():
+    if not os.path.exists(PIPER_MODEL):
+        return False
+
+    try:
+        from piper import PiperVoice
+
+        return True
+
+    except ImportError:
+        return False
+
 
 # Sentences waiting to be spoken.
 
@@ -67,11 +98,138 @@ def set_after_sentence_hook(hook):
     after_sentence_hook = hook
 
 
+def _get_piper_voice():
+    # Load the neural voice once per session.
+
+    global _piper_voice
+
+    if _piper_voice is None:
+        from piper import PiperVoice
+
+        print(
+            "[ZOYA VOICE] Loading the Piper neural "
+            "voice (Amy)..."
+        )
+
+        _piper_voice = PiperVoice.load(
+            PIPER_MODEL
+        )
+
+    return _piper_voice
+
+
+_piper_voice = None
+
+
+def _synthesize_to_wav(text):
+    # Render one sentence with Piper and return
+    # the path of a temporary WAV file, or None
+    # on failure.
+
+    try:
+        from piper import SynthesisConfig
+
+        voice = _get_piper_voice()
+
+        length_scale = max(
+            0.55,
+            min(
+                1.9,
+                PIPER_BASE_RATE / max(
+                    1, speech_rate
+                ),
+            ),
+        )
+
+        config = SynthesisConfig(
+            length_scale=length_scale,
+        )
+
+        tmp = tempfile.NamedTemporaryFile(
+            suffix=".wav",
+            delete=False,
+        )
+
+        wav_path = tmp.name
+
+        tmp.close()
+
+        import wave as wave_module
+
+        with wave_module.open(
+            wav_path, "wb"
+        ) as wav_file:
+            voice.synthesize_wav(
+                text,
+                wav_file,
+                syn_config=config,
+            )
+
+        return wav_path
+
+    except Exception as error:
+        print(
+            f"[ZOYA VOICE] Piper synthesis failed: "
+            f"{error} - falling back."
+        )
+
+        return None
+
+
+def _play_wav(path):
+    import winsound
+
+    winsound.PlaySound(
+        path,
+        winsound.SND_FILENAME,
+    )
+
+
+def _speak_with_piper(text):
+    wav_path = _synthesize_to_wav(text)
+
+    if wav_path is None:
+        return False
+
+    try:
+        _play_wav(wav_path)
+
+        return True
+
+    finally:
+        try:
+            os.unlink(wav_path)
+
+        except Exception:
+            pass
+
+
+def _init_windows_engine():
+    # The fallback engine (Windows Zira).
+
+    engine = pyttsx3.init()
+
+    selected = None
+
+    for voice in engine.getProperty("voices"):
+        if PREFERRED_VOICE in voice.name.lower():
+            selected = voice.id
+
+            break
+
+    if selected:
+        engine.setProperty("voice", selected)
+
+    engine.setProperty("rate", speech_rate)
+
+    return engine
+
+
 def voice_worker_loop():
     global voice_ready
 
     # Windows COM must be initialized in the
-    # thread that owns the speech engine.
+    # thread that owns the fallback engine.
 
     try:
         import comtypes
@@ -81,31 +239,63 @@ def voice_worker_loop():
     except Exception:
         pass
 
-    try:
-        engine = pyttsx3.init()
+    fallback_engine = None
 
-        selected = None
+    piper_ok = _piper_available()
 
-        for voice in engine.getProperty("voices"):
-            if PREFERRED_VOICE in voice.name.lower():
-                selected = voice.id
-                break
+    if piper_ok:
+        try:
+            # Warm the neural voice now so the
+            # first sentence is not slow.
 
-        if selected:
-            engine.setProperty("voice", selected)
+            _get_piper_voice()
 
-        engine.setProperty("rate", speech_rate)
+            voice_ready = True
 
-        voice_ready = True
+            print(
+                "[ZOYA VOICE] Neural voice ready "
+                "(Piper/Amy)."
+            )
 
-        print("[Shadow VOICE] Voice output ready.")
+        except Exception as error:
+            print(
+                f"[ZOYA VOICE] Piper failed to load: "
+                f"{error} - using Windows voice."
+            )
 
-    except Exception as error:
-        print(f"[Shadow VOICE] Could not start voice: {error}")
+            piper_ok = False
 
-        _drain_queue()
+    if not piper_ok:
 
-        return
+        if pyttsx3 is None:
+            print(
+                "[ZOYA VOICE] No speech engine "
+                "available."
+            )
+
+            _drain_queue()
+
+            return
+
+        try:
+            fallback_engine = _init_windows_engine()
+
+            voice_ready = True
+
+            print(
+                "[ZOYA VOICE] Windows voice ready "
+                "(Zira)."
+            )
+
+        except Exception as error:
+            print(
+                f"[ZOYA VOICE] Could not start voice: "
+                f"{error}"
+            )
+
+            _drain_queue()
+
+            return
 
     while True:
         item = speech_queue.get()
@@ -114,28 +304,41 @@ def voice_worker_loop():
             speech_queue.task_done()
             break
 
-        # Control messages adjust the engine,
-        # for example a new speaking speed.
+        # Control messages adjust the speaking
+        # speed for upcoming sentences.
 
         if isinstance(item, dict) and "set_rate" in item:
-            try:
-                engine.setProperty("rate", item["set_rate"])
+            new_rate = item["set_rate"]
 
-            except Exception as error:
-                print(
-                    f"[Shadow VOICE] Could not change "
-                    f"speed: {error}"
-                )
+            if fallback_engine is not None:
+                try:
+                    fallback_engine.setProperty(
+                        "rate", new_rate
+                    )
+
+                except Exception:
+                    pass
 
             speech_queue.task_done()
             continue
 
-        try:
-            engine.say(item)
-            engine.runAndWait()
+        spoken = False
 
-        except Exception as error:
-            print(f"[Shadow VOICE] Speak failed: {error}")
+        if piper_ok:
+            spoken = _speak_with_piper(item)
+
+        if not spoken and fallback_engine is not None:
+            try:
+                fallback_engine.say(item)
+
+                fallback_engine.runAndWait()
+
+                spoken = True
+
+            except Exception as error:
+                print(
+                    f"[ZOYA VOICE] Speak failed: {error}"
+                )
 
         # Give the audio output a moment to fully
         # finish, then drop whatever the microphone
@@ -149,7 +352,7 @@ def voice_worker_loop():
 
             except Exception as error:
                 print(
-                    f"[Shadow VOICE] Self-voice guard "
+                    f"[ZOYA VOICE] Self-voice guard "
                     f"failed: {error}"
                 )
 
@@ -172,9 +375,6 @@ def _drain_queue():
 def setup_voice():
     global voice_worker
     global voice_ready
-
-    if pyttsx3 is None:
-        return False
 
     with worker_lock:
 
@@ -216,7 +416,7 @@ def clean_for_speech(text):
 
     import re
 
-    # Remove Qwen3 thinking blocks if any slip through.
+    # Remove thinking blocks if any slip through.
 
     text = re.sub(
         r"<think>.*?</think>",
@@ -324,6 +524,15 @@ def stop_speech():
             break
 
 
+# Current requested speed in words per minute.
+# Reads the saved value if settings are
+# already loaded, otherwise the default.
+
+speech_rate = settings_store.get_setting(
+    "speech_rate"
+)
+
+
 def set_speech_rate(new_rate):
     global speech_rate
 
@@ -355,28 +564,31 @@ def get_speech_rate():
 
 
 if __name__ == "__main__":
-    print("Shadow VOICE OUTPUT TEST")
-    print("-" * 40)
+    print("ZOYA VOICE OUTPUT TEST")
 
     if setup_voice():
-        print("Queueing sentences rapidly (race test)...")
+        print(
+            "Speaking with the new voice..."
+        )
 
-        speak("Hello chief. I am Shadow.")
-        speak("This sentence should start before the next one is ready.")
-        speak("If you hear these in order, the queue works.")
-
-        print("Typing while speaking works if this appears immediately.")
+        speak(
+            "Hello chief. I am Shadow, your personal "
+            "AI companion. Do you like my new voice?"
+        )
 
         wait_until_speech_done()
 
-        print("Now trying faster...")
+        print("Now a bit faster...")
 
-        set_speech_rate(230)
-        speak("I can speak much faster when you ask me to.")
+        set_speech_rate(220)
+
+        speak(
+            "I can also speak faster when you are "
+            "in a hurry, chief."
+        )
+
         wait_until_speech_done()
 
         set_speech_rate(DEFAULT_SPEECH_RATE)
 
         print("All sentences spoken.")
-    else:
-        print("Voice is not available on this system.")
