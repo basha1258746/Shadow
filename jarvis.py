@@ -1087,6 +1087,7 @@ def show_help():
         "   slam the mouse into the top-left corner for emergency stop)\n"
         "- 'watch notepad' - watch a window, announce changes\n"
         "- 'watch status' / 'stop watching'\n"
+        "- 'noise on' / 'noise off' - noise suppression for my ears\n"
         "- 'backup now' / 'list backups' / 'restore backup 1'\n"
         "- 'voice on' / 'voice off' - toggle speech\n"
         "- 'speak faster' / 'speak slower' / 'speak normal'\n"
@@ -1315,6 +1316,33 @@ def get_response(text):
 
     if text_lower == "voice off":
         return handle_voice_command(False)
+
+    if text_lower in (
+        "noise on",
+        "noise suppression on",
+    ):
+        import noise_suppression
+
+        noise_suppression.set_enabled(True)
+
+        return (
+            "Noise suppression is ON, baa. I will "
+            "subtract the room noise before "
+            "listening."
+        )
+
+    if text_lower in (
+        "noise off",
+        "noise suppression off",
+    ):
+        import noise_suppression
+
+        noise_suppression.set_enabled(False)
+
+        return (
+            "Noise suppression is OFF, baa. I will "
+            "listen to the raw microphone."
+        )
 
     if text_lower in (
         "semantic on",

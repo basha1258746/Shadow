@@ -6,6 +6,8 @@ import time
 
 import settings as settings_store
 
+import noise_suppression
+
 try:
     from vosk import Model, KaldiRecognizer
 
@@ -254,13 +256,15 @@ def _open_stream(device_id):
     return False
 
 
-def warmup_microphone():
+def warmup_microphone(force=False):
     # Eat the garbled warm-up window once per
     # session. If real speech is already being
     # recognized, the ears are fine and we
-    # finish early.
+    # finish early. A REBUILT stream (after a
+    # failure) must always re-warm: the new
+    # stream enters the dead zone again.
 
-    if warmup_done:
+    if warmup_done and not force:
         return
 
     if recognizer is None or audio_queue is None:
@@ -272,6 +276,17 @@ def warmup_microphone():
         "settle)..."
     )
 
+    # The first seconds of warm-up are pure
+    # room noise: capture them and teach the
+    # noise suppressor what this room sounds
+    # like when nobody speaks.
+
+    noise_frames = []
+
+    noise_samples_needed = 16000 * 3
+
+    noise_samples_collected = 0
+
     deadline = time.time() + WARMUP_SECONDS
 
     while time.time() < deadline:
@@ -281,6 +296,32 @@ def warmup_microphone():
 
         except Exception:
             continue
+
+        if (
+            not noise_suppression.has_profile()
+            and noise_samples_collected
+            < noise_samples_needed
+        ):
+            import numpy as np_module
+
+            samples = np_module.frombuffer(
+                data,
+                dtype=np_module.int16
+            ).astype(np_module.float32)
+
+            noise_frames.append(samples)
+
+            noise_samples_collected += len(
+                samples
+            )
+
+            if (
+                noise_samples_collected
+                >= noise_samples_needed
+            ):
+                noise_suppression.learn_from_noise(
+                    noise_frames
+                )
 
         try:
             if recognizer.AcceptWaveform(data):
@@ -421,11 +462,12 @@ def setup_stt():
             f"(device {device_id})"
         )
 
-        # Discard the garbled warm-up window once
-        # per session so the FIRST command is
-        # heard clearly.
+        # Discard the garbled warm-up window so
+        # the first command on THIS stream is
+        # heard clearly. Always: even rebuilt
+        # streams re-enter the dead zone.
 
-        warmup_microphone()
+        warmup_microphone(force=True)
 
         return True
 
@@ -446,7 +488,11 @@ def audio_callback(indata, frames, time_info, status):
     # instead of folding high frequencies down.
 
     if effective_down_factor == 1 and input_channels == 1:
-        audio_queue.put(bytes(indata))
+        processed = noise_suppression.process_block(
+            bytes(indata)
+        )
+
+        audio_queue.put(processed)
         return
 
     import numpy as np_module
@@ -482,6 +528,25 @@ def audio_callback(indata, frames, time_info, status):
         samples[low] * (1.0 - frac)
         + samples[high] * frac
     )
+
+    # Noise suppression sits after resampling
+    # and before auto-gain: subtract the room
+    # first, then amplify what survives.
+
+    out_bytes = np_module.clip(
+        out,
+        -32768,
+        32767
+    ).astype(np_module.int16).tobytes()
+
+    processed = noise_suppression.process_block(
+        out_bytes
+    )
+
+    out = np_module.frombuffer(
+        processed,
+        dtype=np_module.int16
+    ).astype(np_module.float32)
 
     # Adaptive gain: adapt only on real audio,
     # never on silence, so room noise is not

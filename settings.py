@@ -7,7 +7,8 @@ DEFAULT_SETTINGS = {
     "voice_enabled": True,
     "speech_rate": 170,
     "mic_device_id": None,
-    "semantic_search": True
+    "semantic_search": True,
+    "noise_enabled": True
 }
 
 settings = {}
