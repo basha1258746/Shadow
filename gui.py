@@ -12,6 +12,7 @@ sys.stderr.reconfigure(errors="replace")
 # the terminal version does.
 
 import Shadow
+from voice_output import stop_speech, set_muted
 
 # ---------------- LOOK ----------------
 
@@ -90,7 +91,59 @@ class ShadowGUI:
         root.configure(bg=BG)
 
         root.grid_columnconfigure(0, weight=1)
-        root.grid_rowconfigure(0, weight=1)
+        root.grid_rowconfigure(1, weight=1)
+
+        # ---- Toolbar: quick action buttons ----
+
+        toolbar = tk.Frame(root, bg=PANEL)
+        toolbar.grid(row=0, column=0, columnspan=2, sticky="ew")
+
+        self.voice_chat_button = tk.Button(
+            toolbar,
+            text="🎙 Voice chat",
+            font=self.font_name,
+            bg="#21262d",
+            fg=TEXT,
+            activebackground="#2d333b",
+            activeforeground=TEXT,
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            command=self._toggle_voice_chat,
+        )
+        self.voice_chat_button.pack(
+            side="left", padx=(12, 6), pady=6
+        )
+
+        self.briefing_button = tk.Button(
+            toolbar,
+            text="☀ Briefing",
+            font=self.font_name,
+            bg="#21262d",
+            fg=TEXT,
+            activebackground="#2d333b",
+            activeforeground=TEXT,
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            command=self._on_briefing,
+        )
+        self.briefing_button.pack(side="left", padx=6, pady=6)
+
+        self.stop_speech_button = tk.Button(
+            toolbar,
+            text="⏹ Stop speaking",
+            font=self.font_name,
+            bg="#21262d",
+            fg=TEXT,
+            activebackground="#2d333b",
+            activeforeground=TEXT,
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            command=self._on_stop_speaking,
+        )
+        self.stop_speech_button.pack(side="left", padx=6, pady=6)
 
         # ---- Chat area ----
 
@@ -108,7 +161,7 @@ class ShadowGUI:
             state="disabled",
             font=self.font_body,
         )
-        self.chat.grid(row=0, column=0, sticky="nsew")
+        self.chat.grid(row=1, column=0, sticky="nsew")
 
         self.chat.tag_configure(
             "Shadow",
@@ -143,7 +196,7 @@ class ShadowGUI:
             command=self.chat.yview,
             width=10,
         )
-        self.scrollbar.grid(row=0, column=1, sticky="ns")
+        self.scrollbar.grid(row=1, column=1, sticky="ns")
         self.chat.configure(
             yscrollcommand=self._on_chat_scroll
         )
@@ -151,7 +204,7 @@ class ShadowGUI:
         # ---- Bottom bar ----
 
         bar = tk.Frame(root, bg=PANEL)
-        bar.grid(row=1, column=0, columnspan=2, sticky="ew")
+        bar.grid(row=2, column=0, columnspan=2, sticky="ew")
         bar.grid_columnconfigure(3, weight=1)
 
         # Status indicator: colored dot + text.
@@ -412,6 +465,37 @@ class ShadowGUI:
         if self.busy.is_set():
             return
 
+        lowered = text.lower().strip()
+
+        # GUI-native handling: typing 'voice chat'
+        # must never reach the terminal's
+        # interactive voice loop inside the brain
+        # thread.
+
+        if lowered == "voice chat":
+            self._start_wake_monitor()
+            return
+
+        if lowered in (
+            "stop listening",
+            "wake word off",
+        ):
+            if self.wake_mode:
+                self._stop_wake_monitor()
+
+            else:
+                self._append_chat(
+                    "Voice chat is not on right now, baa.",
+                    "system",
+                )
+
+            return
+
+        # A fresh user message always clears a
+        # previous 'stop speaking' mute.
+
+        set_muted(False)
+
         self.busy.set()
         self._set_busy_ui(True)
 
@@ -467,6 +551,47 @@ class ShadowGUI:
         self._set_ready()
         self.entry.focus_set()
 
+    # ---------------- TOOLBAR ACTIONS ----------------
+
+    def _toggle_voice_chat(self):
+        if self.wake_mode:
+            self._stop_wake_monitor()
+
+        else:
+            self._start_wake_monitor()
+
+    def _reset_voice_chat_button(self):
+        # Safe to call from any thread via _post.
+
+        self.wake_mode = False
+
+        try:
+            self.voice_chat_button.config(
+                text="🎙 Voice chat"
+            )
+
+        except tk.TclError:
+            pass
+
+    def _on_briefing(self):
+        if self.busy.is_set() or self.wake_mode:
+            return
+
+        self.entry.delete(0, "end")
+        self._run_user_text("good morning")
+
+    def _on_stop_speaking(self):
+        # Mute future sentences and drop whatever
+        # is still queued. The sentence currently
+        # being spoken by Windows finishes; the
+        # next user message unmutes her.
+
+        set_muted(True)
+        stop_speech()
+        self._append_chat(
+            "(stopped speaking)", "system"
+        )
+
     # ---------------- WAKE WORD MONITOR ----------------
 
     def _start_wake_monitor(self):
@@ -477,8 +602,12 @@ class ShadowGUI:
             return
 
         self.wake_mode = True
+        set_muted(False)
         self._set_busy_ui(True)
         self._update_status("Say 'Shadow'...", STATUS_LISTENING)
+        self.voice_chat_button.config(
+            text="⏹ Stop voice chat"
+        )
 
         self._append_chat(
             "Wake word monitor ON. Say 'Shadow' and then "
@@ -502,7 +631,7 @@ class ShadowGUI:
             )
             self._post(self._set_busy_ui, False)
             self._post(self._set_ready)
-            self.wake_mode = False
+            self._post(self._reset_voice_chat_button)
             return
 
         self.ears_ready = True
@@ -565,6 +694,8 @@ class ShadowGUI:
             self._stop_wake_monitor()
             return
 
+        set_muted(False)
+
         self.busy.set()
         self._set_thinking()
 
@@ -576,6 +707,9 @@ class ShadowGUI:
 
     def _stop_wake_monitor(self):
         self.wake_mode = False
+        self.voice_chat_button.config(
+            text="🎙 Voice chat"
+        )
         self._append_chat(
             "Wake word monitor OFF. Type a message or "
             "press the mic button to talk to me.",

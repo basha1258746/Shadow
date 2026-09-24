@@ -45,6 +45,18 @@ voice_ready = False
 
 after_sentence_hook = None
 
+# When True, new sentences are not spoken.
+# Set by the GUI 'stop speaking' button; the
+# next user message clears it.
+
+muted = False
+
+
+def set_muted(value):
+    global muted
+
+    muted = bool(value)
+
 
 def set_after_sentence_hook(hook):
     # Register the microphone-drain function.
@@ -244,6 +256,9 @@ def clean_for_speech(text):
 def speak(text):
     # Queue a sentence for speaking and return
     # immediately (non-blocking).
+
+    if muted:
+        return
 
     if not setup_voice():
         return
