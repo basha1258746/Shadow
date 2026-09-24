@@ -30,6 +30,8 @@ import computer_control
 
 import window_watcher
 
+import phone_server
+
 # Load saved settings BEFORE the voice modules
 # start, so they pick up the stored speed.
 
@@ -1088,6 +1090,8 @@ def show_help():
         "- 'watch notepad' - watch a window, announce changes\n"
         "- 'watch status' / 'stop watching'\n"
         "- 'noise on' / 'noise off' - noise suppression for my ears\n"
+        "- 'phone on' - chat with me from your phone over Wi-Fi\n"
+        "- 'phone status' / 'phone off'\n"
         "- 'backup now' / 'list backups' / 'restore backup 1'\n"
         "- 'voice on' / 'voice off' - toggle speech\n"
         "- 'speak faster' / 'speak slower' / 'speak normal'\n"
@@ -1204,6 +1208,28 @@ def get_response(text):
             "Tell me which window to watch, baa. "
             "Like: watch notepad - or watch chrome."
         )
+
+    # ---- PHONE ACCESS ----
+
+    if text_lower in (
+        "phone status",
+        "phone",
+    ):
+        return phone_server.get_status_text()
+
+    if text_lower in (
+        "phone on",
+        "start phone",
+        "phone access on",
+    ):
+        return phone_server.start_server()
+
+    if text_lower in (
+        "phone off",
+        "stop phone",
+        "phone access off",
+    ):
+        return phone_server.stop_server()
 
     if text_lower.startswith("watch "):
         query = text[6:].strip()
