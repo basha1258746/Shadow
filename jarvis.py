@@ -1334,6 +1334,15 @@ def voice_chat_mode():
 
 
 def main():
+    # Launch the desktop window with:
+    #   python Shadow.py gui
+
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "gui":
+        import gui
+
+        gui.run()
+        return
+
     print("=" * 50)
     print("Shadow v0.12")
     print("Local AI Assistant")
