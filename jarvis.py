@@ -26,6 +26,8 @@ import semantic_search
 
 import screen_vision
 
+import computer_control
+
 # Load saved settings BEFORE the voice modules
 # start, so they pick up the stored speed.
 
@@ -82,6 +84,13 @@ current_document_chunks = []
 voice_enabled = settings_store.get_setting(
     "voice_enabled"
 )
+
+# Computer control: when not None, this holds
+# a staged action {"action": ..., "description":
+# ...} that will ONLY run after the user
+# explicitly confirms with yes.
+
+pending_action = None
 
 # True when the current reply was already spoken
 # sentence by sentence during generation.
@@ -1028,6 +1037,10 @@ def show_help():
         "- 'semantic on' / 'semantic off' - meaning-based document search\n"
         "- 'what do you see' - look at my screen and describe it\n"
         "- 'look at my screen and <question>' - ask about what is on screen\n"
+        "- 'move mouse to center' / 'click' / 'double click' / 'right click'\n"
+        "- 'scroll down 5' / 'type hello' / 'press enter'\n"
+        "  (computer actions ALWAYS ask yes/no first - say no to cancel;\n"
+        "   slam the mouse into the top-left corner for emergency stop)\n"
         "- 'backup now' / 'list backups' / 'restore backup 1'\n"
         "- 'voice on' / 'voice off' - toggle speech\n"
         "- 'speak faster' / 'speak slower' / 'speak normal'\n"
@@ -1058,6 +1071,78 @@ def get_response(text):
 
     if not text:
         return "Yes, baa?"
+
+    # ---- COMPUTER CONTROL: CONFIRMATION GATE ----
+
+    global pending_action
+
+    lowered_yes = text_lower in (
+        "yes", "yep", "yeah", "yup", "sure",
+        "ok", "okay", "do it", "confirm",
+        "yes please", "go ahead",
+    )
+
+    lowered_no = text_lower in (
+        "no", "nope", "cancel", "stop",
+        "don't", "dont", "never mind",
+        "nevermind", "forget it", "abort",
+    )
+
+    if pending_action is not None:
+
+        if lowered_yes:
+            action = pending_action["action"]
+            pending_action = None
+
+            return computer_control.execute_action(
+                action
+            )
+
+        if lowered_no:
+            pending_action = None
+
+            return (
+                "Cancelled, baa. Nothing was touched."
+            )
+
+        # Anything else while an action waits:
+        # the confirmation is void - never let an
+        # old staged action fire by accident.
+
+        pending_action = None
+
+        return (
+            "I cancelled the waiting action since "
+            "you said something else, baa. Tell me "
+            "again if you still want it."
+        )
+
+    # ---- COMPUTER CONTROL: ACTION TRIGGERS ----
+
+    command_text = text_lower
+
+    if command_text.startswith("computer, "):
+        command_text = command_text[
+            len("computer, "):].strip()
+
+    action = computer_control.parse_command(
+        command_text
+    )
+
+    if action is not None:
+        description = (
+            computer_control.describe_action(action)
+        )
+
+        pending_action = {
+            "action": action,
+            "description": description,
+        }
+
+        return (
+            f"I am about to {description}. "
+            "Shall I? Say yes or no, baa."
+        )
 
     if text_lower in ("help", "what can you do"):
         return show_help()
