@@ -8,10 +8,16 @@ import os
 
 # Windows consoles sometimes cannot print emoji
 # and other special characters. Replace them
-# with "?" instead of crashing.
+# with "?" instead of crashing. Under pythonw
+# (the silent autostart launcher) there is no
+# console at all: stdout/stderr are None, so
+# guard the reconfigure and the prints.
 
-sys.stdout.reconfigure(errors="replace")
-sys.stderr.reconfigure(errors="replace")
+if sys.stdout is not None:
+    sys.stdout.reconfigure(errors="replace")
+
+if sys.stderr is not None:
+    sys.stderr.reconfigure(errors="replace")
 
 from system_info import get_system_info
 from app_control import open_application
@@ -1639,10 +1645,54 @@ def main():
     # Launch the desktop window with:
     #   python Shadow.py gui
 
+    # Laptop-autostart mode: launch with
+    #   python Shadow.py autostart
+    # She starts straight into hands-free
+    # listening: say "Shadow" and she answers.
+
+    autostart = (
+        len(sys.argv) > 1
+        and sys.argv[1].lower() == "autostart"
+    )
+
     if len(sys.argv) > 1 and sys.argv[1].lower() == "gui":
         import gui
 
         gui.run()
+        return
+
+    if autostart:
+        print("=" * 50)
+        print("ZOYA v1.0 - waking with your laptop")
+        print("=" * 50)
+        print("Say 'Shadow' any time. Type 'exit' to stop.")
+        print()
+
+        # Greet softly, warm the ears, then go
+        # straight into the hands-free loop.
+
+        if voice_enabled:
+            speak(
+                "I am here, chief. Just say Shadow."
+            )
+
+        print("[ZOYA EARS] Warming up microphone...")
+
+        try:
+            setup_stt()
+
+        except Exception as error:
+            print(
+                f"[ZOYA EARS] Warm-up failed: {error}"
+            )
+
+        try:
+            voice_chat_mode()
+
+        except (KeyboardInterrupt, EOFError):
+            pass
+
+        close_stt()
         return
 
     print("=" * 50)
