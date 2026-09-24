@@ -82,6 +82,19 @@ MAX_GAIN = 8.0
 
 current_gain = 1.0
 
+# Measured 2026-09-24: this laptop's SST
+# microphone array delivers loud but garbled
+# audio for the first ~12 seconds of every
+# process that opens it, regardless of rate
+# or channel count. After that window every
+# capture is clean. Shadow therefore warms
+# her ears once per session, before the
+# first real listen.
+
+WARMUP_SECONDS = 12.0
+
+warmup_done = False
+
 
 def _list_input_devices():
     import sounddevice as sd
@@ -215,6 +228,57 @@ def _open_stream(device_id):
     return False
 
 
+def warmup_microphone():
+    # Eat the garbled warm-up window once per
+    # session. If real speech is already being
+    # recognized, the ears are fine and we
+    # finish early.
+
+    if warmup_done:
+        return
+
+    if recognizer is None or audio_queue is None:
+        return
+
+    print(
+        "[Shadow EARS] Warming up the microphone "
+        "(the array needs a few seconds to "
+        "settle)..."
+    )
+
+    deadline = time.time() + WARMUP_SECONDS
+
+    while time.time() < deadline:
+
+        try:
+            data = audio_queue.get(timeout=0.5)
+
+        except Exception:
+            continue
+
+        try:
+            if recognizer.AcceptWaveform(data):
+                text = json.loads(
+                    recognizer.Result()
+                ).get("text", "")
+
+                if text:
+                    # Already hearing real speech.
+                    break
+
+        except Exception:
+            continue
+
+    # Drop everything collected during warm-up
+    # so no garbage leaks into the first listen.
+
+    flush_audio_queue()
+
+    globals()["warmup_done"] = True
+
+    print("[Shadow EARS] Warm-up complete. Ears ready.")
+
+
 def setup_stt():
     global model
     global recognizer
@@ -238,11 +302,37 @@ def setup_stt():
         )
         return False
 
-    # ALWAYS open a fresh stream for every
-    # listen. Testing showed that long-lived
-    # streams from this SST array stop producing
-    # recognizable speech, while a freshly
-    # opened stream hears perfectly.
+    # Reuse a healthy warm stream across
+    # listens. Lesson from 2026-09-24 testing:
+    # REOPENING the microphone puts this SST
+    # array back into its garbled warm-up
+    # window every time. A stream that stays
+    # open becomes reliable once it has warmed
+    # up. So keep the stream while it is alive,
+    # and rebuild everything only after a
+    # failure (self-healing).
+
+    stream_alive = (
+        mic_stream is not None
+        and mic_stream.active
+        and audio_queue is not None
+        and model is not None
+    )
+
+    if stream_alive:
+
+        # Ears already running: refresh only the
+        # recognizer so no stale audio state
+        # carries over between listens.
+
+        recognizer = KaldiRecognizer(
+            model,
+            SAMPLE_RATE
+        )
+
+        return True
+
+    # No healthy stream: build everything fresh.
 
     _reset_stream()
 
@@ -301,6 +391,12 @@ def setup_stt():
             f"{device_name} "
             f"(device {device_id})"
         )
+
+        # Discard the garbled warm-up window once
+        # per session so the FIRST command is
+        # heard clearly.
+
+        warmup_microphone()
 
         return True
 
@@ -430,7 +526,7 @@ def _reset_stream():
     current_gain = 1.0
 
 
-def listen_for_command(max_seconds=7):
+def listen_for_command(max_seconds=7, _retried=False):
     global mic_stream
 
     if not setup_stt():
@@ -510,6 +606,12 @@ def listen_for_command(max_seconds=7):
 
         _reset_stream()
 
+        if not _retried:
+            return listen_for_command(
+                max_seconds,
+                _retried=True
+            )
+
         return ""
 
     spoken = " ".join(
@@ -519,6 +621,23 @@ def listen_for_command(max_seconds=7):
         ]
         if part
     )
+
+    # Nothing heard on a healthy stream? One
+    # self-healing retry on a rebuilt, freshly
+    # warmed stream before giving up.
+
+    if not spoken and not _retried:
+        print(
+            "[Shadow EARS] Nothing clear heard; "
+            "rebuilding the microphone..."
+        )
+
+        _reset_stream()
+
+        return listen_for_command(
+            max_seconds,
+            _retried=True
+        )
 
     return spoken
 
@@ -567,7 +686,7 @@ def strip_wake_word(text):
     return False, text
 
 
-def listen_for_wake_word(max_seconds=30):
+def listen_for_wake_word(max_seconds=30, _retried=False):
     # Listen continuously. Return as soon as the
     # wake word is heard: (True, command_after_wake)
     # or (False, "") if nothing was heard.
@@ -625,6 +744,40 @@ def listen_for_wake_word(max_seconds=30):
                 if found:
                     return True, rest
 
+            else:
+                # NEW: also check the partial (in-
+                # progress) phrase. Short commands in
+                # a noisy room often never produce a
+                # final result, but the wake word is
+                # usually already visible in the
+                # partial text. Checking it makes the
+                # wake trigger much more responsive.
+
+                try:
+                    partial = json.loads(
+                        recognizer.PartialResult()
+                    ).get("partial", "")
+
+                except Exception:
+                    continue
+
+                if not partial:
+                    continue
+
+                lowered_partial = partial.lower()
+
+                for wake in WAKE_WORDS:
+                    position = lowered_partial.find(wake)
+
+                    if position == -1:
+                        continue
+
+                    rest = partial[
+                        position + len(wake):
+                    ].strip(" ,.!?")
+
+                    return True, rest
+
         # Time window ended; check the last
         # partial phrase for the wake word.
 
@@ -637,6 +790,23 @@ def listen_for_wake_word(max_seconds=30):
         if found:
             return True, rest
 
+        # Nothing heard at all? One self-healing
+        # retry on a rebuilt, freshly warmed
+        # stream before giving up.
+
+        if not _retried:
+            print(
+                "[Shadow EARS] No wake word heard; "
+                "rebuilding the microphone..."
+            )
+
+            _reset_stream()
+
+            return listen_for_wake_word(
+                max_seconds,
+                _retried=True
+            )
+
         return False, ""
 
     except queue.Empty:
@@ -647,12 +817,24 @@ def listen_for_wake_word(max_seconds=30):
 
         _reset_stream()
 
+        if not _retried:
+            return listen_for_wake_word(
+                max_seconds,
+                _retried=True
+            )
+
         return False, ""
 
     except Exception as error:
         print(f"[Shadow EARS] Listening error: {error}")
 
         _reset_stream()
+
+        if not _retried:
+            return listen_for_wake_word(
+                max_seconds,
+                _retried=True
+            )
 
         return False, ""
 
