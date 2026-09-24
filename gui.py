@@ -85,7 +85,7 @@ class ShadowGUI:
     def _build_window(self):
         root = self.root
 
-        root.title("Shadow - Local AI Assistant")
+        root.title("Shadow - Personal AI Companion")
         root.geometry("820x640")
         root.minsize(600, 480)
         root.configure(bg=BG)
@@ -373,7 +373,7 @@ class ShadowGUI:
         else:
             self._update_status("Ollama offline", STATUS_OFFLINE)
             self._append_chat(
-                "Ollama is not running, baa. Start Ollama, "
+                "Ollama is not running, chief. Start Ollama, "
                 "then send me a message - I will reconnect "
                 "automatically.",
                 "system",
@@ -382,9 +382,9 @@ class ShadowGUI:
         user_name = Shadow.memory_manager.get_user_name()
 
         if user_name:
-            greeting = f"Shadow online. Hello, {user_name} baa."
+            greeting = f"Shadow online. Hello, {user_name} chief."
         else:
-            greeting = "Shadow online. Hello baa."
+            greeting = "Shadow online. Hello chief."
 
         self._append_chat(greeting, "Shadow")
 
@@ -443,7 +443,7 @@ class ShadowGUI:
             if not heard:
                 self._update_status("Ready", STATUS_ONLINE)
                 self._append_chat(
-                    "(I did not hear anything, baa.)",
+                    "(I did not hear anything, chief.)",
                     "system",
                 )
                 self._set_busy_ui(False)
@@ -500,7 +500,7 @@ class ShadowGUI:
 
             else:
                 self._append_chat(
-                    "Voice chat is not on right now, baa.",
+                    "Voice chat is not on right now, chief.",
                     "system",
                 )
 
@@ -652,7 +652,7 @@ class ShadowGUI:
         if not Shadow.setup_stt():
             self._post(
                 self._append_chat,
-                "I could not open the microphone, baa.",
+                "I could not open the microphone, chief.",
                 "system",
             )
             self._post(self._set_busy_ui, False)
@@ -685,7 +685,7 @@ class ShadowGUI:
                 else:
                     # Bare wake word: ask for the command.
 
-                    Shadow.speak("Yes baa?")
+                    Shadow.speak("Yes chief?")
                     Shadow.wait_until_speech_done()
                     Shadow.flush_audio_queue()
 

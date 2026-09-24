@@ -73,11 +73,25 @@ input_channels = 1
 
 effective_down_factor = 1
 
-# All the ways the user might call Shadow.
-# "airbus" is how the tiny model mishears
-# "Shadow" in some voices (found in testing).
+# All the ways the user might call her.
+# Renamed to Shadow (2026-09-24); "Shadow" is
+# kept as a legacy alias. The misspellings
+# are how the small speech model commonly
+# hears each name in different voices.
 
 WAKE_WORDS = (
+    # Shadow and its likely mishearings.
+
+    "Shadow",
+    "soya",
+    "joya",
+    "zoyla",
+    "hey Shadow",
+    "ok Shadow",
+    "yo Shadow",
+
+    # Legacy name, still honored.
+
     "Shadow",
     "jervis",
     "Shadow,",
@@ -756,14 +770,14 @@ def flush_audio_queue():
 def strip_wake_word(text):
     # Remove the wake word from the start of a
     # heard phrase and return (found, rest).
+    # Longest wake variants first so nothing
+    # is left behind ("hey Shadow" -> "", not
+    # "hey ...").
 
     if not text:
         return False, ""
 
     lowered = text.lower().strip()
-
-    # Longest first so "hey Shadow" is removed
-    # completely, not just "Shadow".
 
     for wake in sorted(
         WAKE_WORDS,

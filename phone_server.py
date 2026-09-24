@@ -75,7 +75,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   <input id="pin" type="password" inputmode="numeric" maxlength="6">
   <button onclick="savePin()">Enter</button>
 </div>
-<header>Shadow - Local AI Assistant</header>
+<header>Shadow - Personal AI Companion</header>
 <div id="chat"></div>
 <form onsubmit="return sendMsg()">
   <input id="box" type="text" autocomplete="off" placeholder="Talk to Shadow...">
@@ -168,7 +168,7 @@ if (localStorage.getItem('Shadow_pin')) {
 
 def get_lan_ips():
     # Every IPv4 address this laptop has on the
-    # network, so baa can pick the right one.
+    # network, so chief can pick the right one.
 
     ips = []
 
@@ -408,7 +408,7 @@ def stop_server():
 
     if server is None:
         return (
-            "Phone access is not running, baa."
+            "Phone access is not running, chief."
         )
 
     server.shutdown()
@@ -417,7 +417,7 @@ def stop_server():
     server_thread = None
 
     return (
-        "Phone access is OFF, baa. Your phone can "
+        "Phone access is OFF, chief. Your phone can "
         "no longer reach me."
     )
 
@@ -426,7 +426,7 @@ def get_status_text():
     if server is None:
         return (
             "Phone access is OFF. Say 'phone on' to "
-            "start it, baa."
+            "start it, chief."
         )
 
     urls = ", ".join(

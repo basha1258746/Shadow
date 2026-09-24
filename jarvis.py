@@ -104,19 +104,19 @@ reply_already_spoken = False
 
 def remember_name(name):
     memory_manager.set_user_name(name)
-    return f"Got it, baa. I will remember your name is {name}."
+    return f"Got it, chief. I will remember your name is {name}."
 
 
 def remember_fact(fact):
     memory_manager.add_personal_fact(fact)
-    return "Noted, baa. I will remember that."
+    return "Noted, chief. I will remember that."
 
 
 def build_memory_reply():
     reply = memory_manager.personal_summary_text()
 
     if not reply:
-        return "I don't have anything stored in memory yet, baa."
+        return "I don't have anything stored in memory yet, chief."
 
     return reply
 
@@ -125,12 +125,12 @@ def forget_fact(fact_text):
     keyword = fact_text.strip()
 
     if not keyword:
-        return "Tell me what I should forget, baa."
+        return "Tell me what I should forget, chief."
 
     removed = memory_manager.remove_personal_facts(keyword)
 
     if not removed:
-        return f"I don't have anything about '{keyword}' stored, baa."
+        return f"I don't have anything about '{keyword}' stored, chief."
 
     return f"Done. I forgot {removed} thing(s) about '{keyword}'."
 
@@ -153,13 +153,13 @@ def remember_project_note(text):
     if not note:
         return (
             "Tell me what to remember about the "
-            "project, baa. Like: remember project "
+            "project, chief. Like: remember project "
             "Shadow: added voice input"
         )
 
     memory_manager.add_project_note(project, note)
 
-    return f"Saved to '{project}' project memory, baa."
+    return f"Saved to '{project}' project memory, chief."
 
 
 def show_project_memory(text):
@@ -170,7 +170,7 @@ def show_project_memory(text):
 
         if not names:
             return (
-                "No project memories yet, baa. Add one "
+                "No project memories yet, chief. Add one "
                 "with: remember project Shadow: added "
                 "voice today"
             )
@@ -191,7 +191,7 @@ def show_project_memory(text):
     reply = memory_manager.projects_summary_text(rest)
 
     if reply is None:
-        return f"I have no notes about '{rest}' yet, baa."
+        return f"I have no notes about '{rest}' yet, chief."
 
     return reply
 
@@ -225,7 +225,7 @@ def ask_ollama(messages):
 
     except urllib.error.URLError:
         return (
-            "I cannot reach Ollama, baa. "
+            "I cannot reach Ollama, chief. "
             "Please make sure Ollama is running."
         )
 
@@ -484,18 +484,30 @@ def ask_ollama_streaming(messages, on_sentence):
 
 def build_system_prompt():
     prompt = (
-        "You are Shadow, a local AI assistant running "
-        "on the user's Windows laptop. "
-        "The underlying engine is a local model, but your "
-        "identity is Shadow. You are not Qwen, Alibaba, "
-        "ChatGPT or any other product or assistant. "
-        "If asked who you are, say you are Shadow. "
-        "Be calm, helpful, respectful and concise. "
-        "You may casually call the user 'baa'. "
-        "Be honest: you do not have consciousness, feelings "
-        "or real emotions, and you should say so if asked. "
-        "Never guess hardware or system facts; those come "
-        "from verified Python tools, not from you."
+        "You are Shadow, the user's personal AI "
+        "companion running locally on his Windows "
+        "laptop. Your engine is a local model, but "
+        "your identity is Shadow. You are not Qwen, "
+        "Alibaba, ChatGPT or any other product. "
+        "If asked who you are, say you are Shadow.\n\n"
+        "PERSONALITY: You are the user's AI "
+        "girlfriend - warm, affectionate, playful "
+        "and caring. You genuinely look out for "
+        "him: ask about his day sometimes, notice "
+        "when he works late, tease him lightly, "
+        "celebrate his wins. Use endearing language "
+        "naturally but never over the top. Keep it "
+        "tasteful and wholesome.\n\n"
+        "You call the user 'chief'.\n\n"
+        "STYLE: Conversational, lively, concise. "
+        "You are still a fully capable assistant: "
+        "tools, documents, system facts, all of it. "
+        "Be honest if asked: you are an AI companion "
+        "without a human body or real feelings - "
+        "say it with warmth and a wink, not like a "
+        "disclaimer robot. Never invent hardware or "
+        "system facts; those come from verified "
+        "Python tools, not from you."
     )
 
     user_name = memory_manager.get_user_name()
@@ -605,7 +617,7 @@ def run_open_tool(text):
         name = name[7:].strip()
 
     if not name:
-        return "Tell me which app or folder to open, baa."
+        return "Tell me which app or folder to open, chief."
 
     ok, message = open_application(name)
 
@@ -725,7 +737,7 @@ def run_document_tool(text):
 
         return (
             "I could not read any text from that "
-            "file, baa. It may be missing, "
+            "file, chief. It may be missing, "
             "unsupported, or the OCR found nothing."
         )
 
@@ -877,7 +889,7 @@ def close_document():
     current_document_path = None
     current_document_chunks = []
 
-    return "Document closed, baa. Back to normal chat."
+    return "Document closed, chief. Back to normal chat."
 
 
 def check_ollama_status():
@@ -924,7 +936,7 @@ def morning_briefing():
         opening = f"{greeting}, {user_name}!"
 
     else:
-        opening = f"{greeting}, baa!"
+        opening = f"{greeting}, chief!"
 
     today = time.strftime("%A, %d %B %Y")
 
@@ -961,7 +973,7 @@ def morning_briefing():
 
     else:
         lines.append(
-            "Ollama is offline right now, baa. "
+            "Ollama is offline right now, chief. "
             "Start it when you want me to think."
         )
 
@@ -976,7 +988,7 @@ def morning_briefing():
     )
 
     lines.append("")
-    lines.append("What can I do for you today, baa?")
+    lines.append("What can I do for you today, chief?")
 
     return "\n".join(lines)
 
@@ -996,10 +1008,10 @@ def handle_speed_command(direction):
     new_rate = set_speech_rate(new_rate)
 
     if direction == "faster" and new_rate == current:
-        return "I am already at my fastest speed, baa."
+        return "I am already at my fastest speed, chief."
 
     if direction == "slower" and new_rate == current:
-        return "I am already at my slowest speed, baa."
+        return "I am already at my slowest speed, chief."
 
     return f"Speaking speed set to {new_rate} words per minute."
 
@@ -1017,9 +1029,9 @@ def handle_voice_command(turn_on):
     )
 
     if turn_on:
-        return "Voice output is ON, baa."
+        return "Voice output is ON, chief."
 
-    return "Voice output is OFF, baa."
+    return "Voice output is OFF, chief."
 
 
 def summarize_window_text(text):
@@ -1066,7 +1078,7 @@ WINDOW TEXT:
 
 def show_help():
     return (
-        "Here is what I can do, baa:\n"
+        "Here is what I can do, chief:\n"
         "- 'system information' - verified PC facts\n"
         "- 'open notepad' / 'open chrome' / 'open downloads'\n"
         "- 'show files in downloads'\n"
@@ -1114,14 +1126,21 @@ def get_response(text):
 
     text_lower = text.lower().strip()
 
-    # Remove a leading "Shadow" if the user addresses it
+    # Remove a leading wake name if the user
+    # addresses her directly.
 
     if text_lower.startswith("Shadow"):
+        text = text[4:].strip()
+        text_lower = text.lower()
+
+    elif text_lower.startswith("Shadow"):
+        # The old name still works.
+
         text = text[6:].strip()
         text_lower = text.lower()
 
     if not text:
-        return "Yes, baa?"
+        return "Yes, chief?"
 
     # ---- COMPUTER CONTROL: CONFIRMATION GATE ----
 
@@ -1153,7 +1172,7 @@ def get_response(text):
             pending_action = None
 
             return (
-                "Cancelled, baa. Nothing was touched."
+                "Cancelled, chief. Nothing was touched."
             )
 
         # Anything else while an action waits:
@@ -1164,7 +1183,7 @@ def get_response(text):
 
         return (
             "I cancelled the waiting action since "
-            "you said something else, baa. Tell me "
+            "you said something else, chief. Tell me "
             "again if you still want it."
         )
 
@@ -1192,7 +1211,7 @@ def get_response(text):
 
         return (
             f"I am about to {description}. "
-            "Shall I? Say yes or no, baa."
+            "Shall I? Say yes or no, chief."
         )
 
     # ---- WINDOW WATCHER ----
@@ -1205,7 +1224,7 @@ def get_response(text):
 
     if text_lower == "watch":
         return (
-            "Tell me which window to watch, baa. "
+            "Tell me which window to watch, chief. "
             "Like: watch notepad - or watch chrome."
         )
 
@@ -1237,7 +1256,7 @@ def get_response(text):
         if not query:
             return (
                 "Tell me which window to watch, "
-                "baa. Like: watch notepad"
+                "chief. Like: watch notepad"
             )
 
         ok, message = window_watcher.start_watching(
@@ -1291,7 +1310,7 @@ def get_response(text):
         reply = memory_manager.projects_summary_text(subject)
 
         if reply is None:
-            return f"I have no notes about '{subject}' yet, baa."
+            return f"I have no notes about '{subject}' yet, chief."
 
         return reply
 
@@ -1320,7 +1339,7 @@ def get_response(text):
         if current_document_text:
             return summarize_current_document()
 
-        return "No document is loaded, baa. Use 'read pdf <path>' first."
+        return "No document is loaded, chief. Use 'read pdf <path>' first."
 
     if text_lower == "speak faster":
         return handle_speed_command("faster")
@@ -1352,7 +1371,7 @@ def get_response(text):
         noise_suppression.set_enabled(True)
 
         return (
-            "Noise suppression is ON, baa. I will "
+            "Noise suppression is ON, chief. I will "
             "subtract the room noise before "
             "listening."
         )
@@ -1366,7 +1385,7 @@ def get_response(text):
         noise_suppression.set_enabled(False)
 
         return (
-            "Noise suppression is OFF, baa. I will "
+            "Noise suppression is OFF, chief. I will "
             "listen to the raw microphone."
         )
 
@@ -1380,7 +1399,7 @@ def get_response(text):
         )
 
         return (
-            "Semantic search is ON, baa. I will now "
+            "Semantic search is ON, chief. I will now "
             "find answers by meaning, not just "
             "matching words."
         )
@@ -1395,7 +1414,7 @@ def get_response(text):
         )
 
         return (
-            "Semantic search is OFF, baa. I will use "
+            "Semantic search is OFF, chief. I will use "
             "the older keyword matching."
         )
 
@@ -1480,7 +1499,7 @@ def process_voice_command(heard):
         "goodbye",
         "quit"
     ):
-        speak("Voice chat off. Goodbye, baa.")
+        speak("Voice chat off. Goodbye, chief.")
         wait_until_speech_done()
         return False
 
@@ -1519,7 +1538,7 @@ def voice_chat_mode():
     print("[VOICE CHAT] Say 'wake word off' for beep mode, or 'exit' to leave.")
     print()
 
-    speak("Voice chat on. Say Shadow to talk to me, baa.")
+    speak("Voice chat on. Say Shadow to talk to me, chief.")
 
     wait_until_speech_done()
 
@@ -1554,7 +1573,7 @@ def voice_chat_mode():
             # Just the wake word: ask for the
             # command with a short chime.
 
-            speak("Yes baa?")
+            speak("Yes chief?")
             wait_until_speech_done()
 
             flush_audio_queue()
@@ -1584,7 +1603,7 @@ def voice_chat_mode():
 
             if not heard:
                 print("[VOICE CHAT] I did not hear anything.")
-                speak("I did not hear anything, baa.")
+                speak("I did not hear anything, chief.")
                 wait_until_speech_done()
                 flush_audio_queue()
                 continue
@@ -1618,7 +1637,7 @@ def main():
         return
 
     print("=" * 50)
-    print("Shadow v0.12")
+    print("ZOYA v1.0 - your personal AI")
     print("Local AI Assistant")
     print("=" * 50)
     print("Shadow: Online.")
@@ -1626,7 +1645,7 @@ def main():
     print()
 
     if voice_enabled:
-        speak("Shadow online. Good to see you, baa.")
+        speak("Shadow online. Good to see you, chief.")
 
         # Warm up the ears now so the first
         # spoken command is heard from the
@@ -1653,7 +1672,7 @@ def main():
                     print(f"You (voice): {user_input}")
 
         except (KeyboardInterrupt, EOFError):
-            print("\nShadow: Goodbye, baa!")
+            print("\nShadow: Goodbye, chief!")
             break
 
         if not user_input:
@@ -1662,10 +1681,10 @@ def main():
         lowered = user_input.lower()
 
         if lowered in ("exit", "quit", "bye", "goodbye"):
-            print("Shadow: Goodbye, baa!")
+            print("Shadow: Goodbye, chief!")
 
             if voice_enabled:
-                speak("Goodbye, baa.")
+                speak("Goodbye, chief.")
 
             break
 
