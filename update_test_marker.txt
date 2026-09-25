@@ -1,0 +1,2 @@
+# Fake upstream commit for testing Shadow's self-update announcer.
+# test marker: self-update changelog demo
