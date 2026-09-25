@@ -12,7 +12,7 @@ sys.stderr.reconfigure(errors="replace")
 # the terminal version does.
 
 import Shadow
-from voice_output import stop_speech, set_muted
+from voice_output import stop_speech, set_muted, play_ear_cone
 
 # ---------------- LOOK ----------------
 
@@ -716,6 +716,13 @@ class ShadowGUI:
                     )
 
                     heard = Shadow.listen_for_command(7)
+
+                    if not heard:
+                        # Same subtle signal as autostart
+                        # mode: the name arrived, the
+                        # command did not.
+
+                        play_ear_cone()
 
                     if (
                         heard

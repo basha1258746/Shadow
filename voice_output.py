@@ -524,6 +524,31 @@ def stop_speech():
             break
 
 
+def play_ear_cone():
+    # Subtle two-tone chime for a very specific
+    # moment: she caught her name but no command
+    # came through. Chief hears it and knows to
+    # retry - instead of her silently going back
+    # to listening. Short, soft, generated on
+    # the fly: no sound files needed.
+
+    try:
+        import winsound
+
+        winsound.Beep(1319, 90)
+
+        time.sleep(0.03)
+
+        winsound.Beep(1760, 110)
+
+        print("[ZOYA VOICE] Ear-cone chime (no command after the wake word).")
+
+    except Exception:
+        # No chime is ever worth crashing over.
+
+        pass
+
+
 # Current requested speed in words per minute.
 # Reads the saved value if settings are
 # already loaded, otherwise the default.

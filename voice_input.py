@@ -126,6 +126,35 @@ WAKE_WORDS = (
     "airbus"
 )
 
+# Filler tokens that surround a real command:
+# speech hesitations, address words, and the
+# recognizer's unknown-token mark. TV chatter
+# in the gap after her name tends to leave
+# exactly these behind (2026-09-25: "the"
+# once reached the brain as a command). Only
+# leading and trailing fillers are dropped -
+# words in the middle of a sentence are
+# never touched ("what the time is it" must
+# survive).
+
+FILLER_WORDS = (
+    "the",
+    "a",
+    "an",
+    "uh",
+    "um",
+    "uhm",
+    "erm",
+    "eh",
+    "hey",
+    "ok",
+    "okay",
+    "yo",
+    "so",
+    "like",
+    "[unk]",
+)
+
 model = None
 
 recognizer = None
@@ -714,8 +743,8 @@ def audio_callback(indata, frames, time_info, status):
 
     block_gain = current_gain
 
-    if rms * block_gain > 9000.0:
-        block_gain = 9000.0 / rms
+    if rms * block_gain > 7500.0:
+        block_gain = 7500.0 / rms
 
     if rms > window_peak_rms:
         window_peak_rms = rms
@@ -991,7 +1020,12 @@ def strip_wake_word(text):
                 len(wake):
             ].strip(" ,.!?\t")
 
-            return True, rest
+            # Fillers and [unk] marks do not count
+            # as a command: an "empty" result sends
+            # the caller to the beep flow instead
+            # of feeding the brain garbage.
+
+            return True, _clean_command(rest)
 
     return False, text
 
@@ -1006,6 +1040,26 @@ def flush_audio_history():
     audio_history.clear()
 
     audio_history_samples = 0
+
+
+def _clean_command(text):
+    # Drop leading and trailing filler tokens
+    # so TV noise and hesitations around the
+    # real command cannot masquerade as one.
+
+    tokens = text.split()
+
+    while tokens and (
+        tokens[0].lower() in FILLER_WORDS
+    ):
+        tokens.pop(0)
+
+    while tokens and (
+        tokens[-1].lower() in FILLER_WORDS
+    ):
+        tokens.pop()
+
+    return " ".join(tokens)
 
 
 def _rehear_history():
@@ -1085,7 +1139,7 @@ def _rehear_history():
         ).strip()
 
     if not rehear_text:
-        return ""
+        return False, ""
 
     print(
         "[Shadow EARS] full-vocab re-hear: "
@@ -1104,16 +1158,25 @@ def _rehear_history():
         if position == -1:
             continue
 
-        command = rehear_text[
-            position + len(wake):
-        ].strip(" ,.!?")
+        # Fillers around the command (TV chatter
+        # in the gap after her name, hesitations)
+        # are stripped so "the" or "[unk]" can
+        # never reach the brain as a command.
+        # Empty result = name only: the caller
+        # falls back to the beep.
 
-        return command
+        command = _clean_command(
+            rehear_text[
+                position + len(wake):
+            ].strip(" ,.!?\t")
+        )
+
+        return True, command
 
     # The name garbled differently in this
     # pass: no reliable command to extract.
 
-    return ""
+    return False, ""
 
 
 def listen_for_wake_word(max_seconds=30, _retried=False):
@@ -1189,12 +1252,9 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                 one_breath_deadline is not None
                 and time.time() >= one_breath_deadline
             ):
-                command = _rehear_history()
+                _, command = _rehear_history()
 
-                if command:
-                    return True, command
-
-                return True, ""
+                return True, command
 
             try:
                 data = audio_queue.get(timeout=wait)
@@ -1316,12 +1376,9 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
         # giving up.
 
         if one_breath_deadline is not None:
-            command = _rehear_history()
+            _, command = _rehear_history()
 
-            if command:
-                return True, command
-
-            return True, ""
+            return True, command
 
         if wake_recognizer is None:
             return False, ""
@@ -1334,6 +1391,25 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
         if found:
             return True, rest
+
+        # SECOND-CHANCE NET: loud audio but the
+        # grammar matched nothing at all. 2026-09-25:
+        # a fast loud "Shadow what time is it" can
+        # decode to nothing in the name-only
+        # grammar. Re-hear the buffer with the
+        # full vocabulary and look for the name
+        # there instead.
+
+        if got_audio and window_peak_rms > 1500.0:
+            name_found, command = _rehear_history()
+
+            if name_found:
+                print(
+                    "[Shadow EARS] wake word recovered "
+                    "by the second-chance net."
+                )
+
+                return True, command
 
         # Nothing heard at all? Rebuild the
         # microphone ONLY if the stream was

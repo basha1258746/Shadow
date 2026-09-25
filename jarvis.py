@@ -155,7 +155,8 @@ from voice_output import (
     DEFAULT_SPEECH_RATE,
     set_after_sentence_hook,
     stop_speech,
-    set_muted
+    set_muted,
+    play_ear_cone
 )
 
 from voice_input import (
@@ -1349,6 +1350,161 @@ WINDOW TEXT:
     return ask_ollama(messages)
 
 
+def build_status_text():
+    # 'Shadow status' from the terminal: is the
+    # hidden autostart Shadow alive, is her
+    # brain online, when did she last hear
+    # anything? She runs without a console,
+    # so this is how chief checks on her.
+
+    lines = []
+
+    alive = False
+
+    pid = None
+
+    try:
+        import subprocess
+
+        # One PowerShell line with NO embedded
+        # double quotes: argv quoting between
+        # Python and PowerShell is fragile, and
+        # the -Filter variant silently matched
+        # nothing. Single quotes only.
+
+        script = (
+            "$p = Get-CimInstance Win32_Process | "
+            "Where-Object { $_.Name -eq 'pythonw.exe' "
+            "-and $_.CommandLine -like '*Shadow.py*autostart*' } "
+            "| Select-Object -First 1; "
+            "if ($p) { $p.ProcessId }"
+        )
+
+        raw = subprocess.run(
+            [
+                "powershell", "-NoProfile", "-Command",
+                script,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+        found = raw.stdout.strip()
+
+        if found.isdigit():
+            alive = True
+
+            pid = found
+
+    except Exception:
+        pass
+
+    if alive:
+        lines.append(f"Shadow: RUNNING (pid {pid})")
+
+    else:
+        lines.append(
+            "Shadow: NOT RUNNING - say 'start Shadow' "
+            "or reboot to wake her."
+        )
+
+    lines.append(
+        "Brain (Ollama): "
+        + (
+            "online"
+            if check_ollama_status()
+            else "OFFLINE - start the Ollama app"
+        )
+    )
+
+    # Her recent hears from the current
+    # session log.
+
+    log_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "Shadow.log",
+    )
+
+    session_start = 0
+
+    hears = []
+
+    session_line = ""
+
+    # Pre-set so the error scan below can never
+    # hit an unbound variable when the log
+    # exists but cannot be read.
+
+    all_lines = []
+
+    if os.path.exists(log_path):
+        try:
+            with open(
+                log_path,
+                "r",
+                encoding="utf-8",
+                errors="replace",
+            ) as log_file:
+                all_lines = log_file.read().splitlines()
+
+            for index, line in enumerate(all_lines):
+                if "Session started" in line:
+                    session_start = index
+
+                    session_line = line.strip()
+
+            hears = [
+                line.strip()
+                for line in all_lines[session_start:]
+                if "heard:" in line or "re-hear:" in line
+            ]
+
+        except Exception:
+            pass
+
+    if session_line:
+        lines.append(session_line)
+
+    if hears:
+        lines.append(
+            f"Last heard ({len(hears)}):")
+
+        for line in hears[-5:]:
+            lines.append(f"  {line}")
+
+    else:
+        lines.append(
+            "She has not transcribed any speech "
+            "this session yet."
+        )
+
+    errors = [
+        line.strip()
+        for line in all_lines[session_start:]
+        if "error" in line.lower()
+        or "CRASH" in line
+        or "failed" in line.lower()
+    ] if os.path.exists(log_path) else []
+
+    if errors:
+        lines.append(f"Recent problems ({len(errors)}):")
+
+        for line in errors[-3:]:
+            lines.append(f"  {line}")
+
+    else:
+        lines.append("No errors this session.")
+
+    lines.append("")
+    lines.append(
+        "More: 'Shadow log' shows her last 40 log "
+        "lines ('Shadow log 100' for more)."
+    )
+
+    return "\n".join(lines)
+
+
 def tail_Shadow_log(lines_to_show=40):
     # 'Shadow log' - show the newest entries from
     # Shadow.log so chief can check what she did
@@ -1436,6 +1592,7 @@ def show_help():
         "- 'listen' - say one command out loud\n"
         "- 'voice chat' - talk to Shadow hands-free\n"
         "- 'Shadow log' - show what I have been up to\n"
+        "- from a terminal: 'Shadow status' checks my health\n"
         "- anything else - just talk to me"
     )
 
@@ -1499,7 +1656,9 @@ def get_response(text):
             pending_action = None
 
             return (
-                "Cancelled, chief. Nothing was touched."
+                "Cancelled, chief. Nothing was touched. "
+                "Tell me the command again if you want "
+                "something different."
             )
 
         # Anything else while an action waits:
@@ -1536,7 +1695,17 @@ def get_response(text):
             "description": description,
         }
 
+        # Repeat the command back before the
+        # confirmation: chief now hears exactly
+        # what she understood, so a voice mishear
+        # ("double click" caught as "click") is
+        # caught at the gate - say no and retry
+        # - instead of firing the wrong action.
+
+        echoed = command_text.replace('"', "'")
+
         return (
+            f'You said: "{echoed}". '
             f"I am about to {description}. "
             "Shall I? Say yes or no, chief."
         )
@@ -1977,6 +2146,13 @@ def voice_chat_mode():
 
                 if not heard:
                     print("[VOICE CHAT] I did not hear anything.")
+
+                    # Subtle chime: the name came
+                    # through but the command did
+                    # not. Chief knows to retry.
+
+                    play_ear_cone()
+
                     continue
 
                 print(f"You (voice): {heard}")
@@ -2034,6 +2210,26 @@ def voice_chat_mode():
 
 
 def main():
+    # Terminal health commands, handled before
+    # anything else: they must not spawn a
+    # second tray icon, speak, or write a new
+    # session banner into Shadow.log.
+
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "status":
+        print(build_status_text())
+
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "log":
+        lines_to_show = 40
+
+        if len(sys.argv) > 2 and sys.argv[2].isdigit():
+            lines_to_show = int(sys.argv[2])
+
+        print(tail_Shadow_log(lines_to_show))
+
+        return
+
     # Silent mode (pythonw autostart) has no
     # console: everything she prints must also
     # land in Shadow.log or it is lost forever.
