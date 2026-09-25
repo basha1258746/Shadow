@@ -19,3 +19,9 @@ python Shadow_debug.py
 
 # Runtime diagnostics log
 Shadow.log
+
+# Self-update state (changelog of the last pull)
+last_update.json
+
+# Re-hear probe evidence
+Shadow_probe.wav

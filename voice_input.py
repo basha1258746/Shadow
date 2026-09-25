@@ -137,6 +137,65 @@ WAKE_WORDS = (
 # never touched ("what the time is it" must
 # survive).
 
+ADDRESS_WORDS = (
+    "hey",
+    "yo",
+    "ok",
+    "okay",
+)
+
+# Single tokens that are never a command on
+# their own. Live-tuning lesson 2026-09-25:
+# degraded speech keeps surfacing as one of
+# these after the beep ("this", "the"), and
+# the brain answered each with fluffy
+# nothing. A REAL one-word command like
+# "time" or "stop" is not in this list.
+
+NOISE_SINGLE_WORDS = (
+    "the",
+    "a",
+    "an",
+    "this",
+    "that",
+    "these",
+    "those",
+    "it",
+    "its",
+    "and",
+    "but",
+    "or",
+    "of",
+    "to",
+    "in",
+    "on",
+    "at",
+    "is",
+    "are",
+    "was",
+    "were",
+    "i",
+    "you",
+    "he",
+    "she",
+    "we",
+    "my",
+    "your",
+    "me",
+    "uh",
+    "um",
+    "uhm",
+    "erm",
+    "eh",
+    "hey",
+    "ok",
+    "okay",
+    "yo",
+    "so",
+    "like",
+    "[unk]",
+)
+
 FILLER_WORDS = (
     "the",
     "a",
@@ -214,6 +273,17 @@ current_gain = 1.0
 
 window_peak_rms = 0.0
 
+# When the room was last genuinely loud (any
+# window). Live-tuning lesson 2026-09-25:
+# chief's loud "HEY" and the grammar's "yo"
+# sighting landed in DIFFERENT windows, so a
+# per-window gate stood down mid-phrase. The
+# rescue and net now accept "loud within the
+# last 10 s" instead of only the current
+# window peak.
+
+last_loud_moment = 0.0
+
 # Measured 2026-09-24: this laptop's SST
 # microphone array delivers loud but garbled
 # audio for the first ~12 seconds of every
@@ -226,6 +296,75 @@ window_peak_rms = 0.0
 WARMUP_SECONDS = 12.0
 
 warmup_done = False
+
+# Name fragments that mark an EXTERNAL mic
+# (USB webcam/speakerphone/headset) in the
+# Windows device list. When one of these is
+# present she prefers it over the built-in
+# array: a desktop mic sits close to chief's
+# mouth, which is exactly what the SST array
+# could not do.
+
+EXTERNAL_MIC_HINTS = (
+    "usb",
+    "yeti",
+    "snowball",
+    "snowball ice",
+    "blue ",
+    "logitech",
+    "webcam",
+    "conference",
+    "speakerphone",
+    "headset",
+    "usb pnp",
+    "digital microphone",
+    "external",
+)
+
+# Devices whose names contain one of these are
+# never picked as her ear.
+
+MIC_BLACKLIST_HINTS = (
+    "stereo mix",
+    "loopback",
+)
+
+
+def _is_external_mic_name(name):
+    lowered = (name or "").lower()
+
+    # Bluetooth hands-free devices (headsets,
+    # earbuds, soundbars) carry narrowband,
+    # echo-prone audio - never auto-prefer
+    # them. Chief can still pin one explicitly
+    # with 'use microphone 29'.
+
+    if "hands-free" in lowered:
+        return False
+
+    return any(
+        hint in lowered
+        for hint in EXTERNAL_MIC_HINTS
+    )
+
+
+def _device_matches_saved_name(
+        device, saved_name):
+    # The name is stored possibly truncated
+    # (sounddevice limits names to 31 chars);
+    # match either direction.
+
+    if not saved_name:
+        return False
+
+    live_name = (device["name"] or "").strip()
+
+    stored = saved_name.strip()
+
+    return (
+        live_name.startswith(stored)
+        or stored.startswith(live_name)
+    )
 
 
 def _list_input_devices():
@@ -250,15 +389,41 @@ def _choose_input_device():
 
     devices = _list_input_devices()
 
-    # 1. A previously saved working device.
+    usable = [
+        (index, device)
+        for index, device in devices
+        if not any(
+            hint in (device["name"] or "").lower()
+            for hint in MIC_BLACKLIST_HINTS
+        )
+    ]
+
+    # 1. An external mic, found by name.
+
+    for index, device in usable:
+        if _is_external_mic_name(
+                device["name"]):
+            return index, device["name"]
+
+    # 2. A previously saved working device.
 
     saved_id = settings_store.get_setting(
         "mic_device_id"
     )
 
+    saved_name = settings_store.get_setting(
+        "mic_device_name"
+    )
+
     if saved_id is not None:
-        for index, device in devices:
+        for index, device in usable:
             if index == saved_id:
+                return index, device["name"]
+
+    if saved_name:
+        for index, device in usable:
+            if _device_matches_saved_name(
+                    device, saved_name):
                 return index, device["name"]
 
     # 2. The Windows default input.
@@ -268,27 +433,26 @@ def _choose_input_device():
             kind="input"
         )["index"]
 
-        for index, device in devices:
+        for index, device in usable:
             if index == default_id:
                 return index, device["name"]
 
     except Exception:
         pass
 
-    # 3. A fully-named Realtek array device
+    # 4. A fully-named Realtek array device
     #    (the working twin on this laptop).
 
-    for index, device in devices:
+    for index, device in usable:
         if device["name"].strip() == (
             "Microphone Array (Realtek(R) Audio)"
         ):
             return index, device["name"]
 
-    # 4. Anything else that can capture.
+    # 5. Anything else that can capture.
 
-    for index, device in devices:
-        if "Stereo Mix" not in device["name"]:
-            return index, device["name"]
+    for index, device in usable:
+        return index, device["name"]
 
     return None, None
 
@@ -556,12 +720,18 @@ def setup_stt():
 
             return False
 
-        # Remember the working microphone so it is
-        # used first next time.
+        # Remember the working microphone by ID
+        # AND NAME: the name survives USB devices
+        # plugging in and reshuffling the indexes.
 
         settings_store.set_setting(
             "mic_device_id",
             device_id
+        )
+
+        settings_store.set_setting(
+            "mic_device_name",
+            device_name
         )
 
         input_ready = True
@@ -588,6 +758,199 @@ def setup_stt():
         model = None
         input_ready = False
         return False
+
+
+def list_input_devices_text():
+    # One call, anywhere: what ears can she
+    # reach right now, and which one she is
+    # wearing. Used by 'Shadow mic' in the
+    # terminal and by voice routes.
+
+    import sounddevice as sd
+
+    try:
+        current = sd.query_devices(
+            kind="input"
+        )["index"]
+
+    except Exception:
+        current = None
+
+    saved_id = settings_store.get_setting(
+        "mic_device_id"
+    )
+
+    lines = ["Microphones I can reach, chief:"]
+
+    found_any = False
+
+    for index, device in _list_input_devices():
+        found_any = True
+
+        marks = []
+
+        if index == saved_id:
+            marks.append("my current ear")
+
+        if index == current:
+            marks.append("Windows default")
+
+        if _is_external_mic_name(
+                device["name"]):
+            marks.append("external")
+
+        suffix = (
+            "  <- " + ", ".join(marks)
+            if marks
+            else ""
+        )
+
+        lines.append(
+            f"- [{index}] {device['name']}"
+            f"{suffix}"
+        )
+
+    if not found_any:
+        lines.append(
+            "- (none found - is anything "
+            "plugged in?)"
+        )
+
+    return "\n".join(lines)
+
+
+def switch_mic_device(device_id=None):
+    # Hot-swap her ear while she is running:
+    # close the current stream, optionally pin
+    # a specific device id, and let setup_stt()
+    # reopen (which re-warms the mic itself).
+    # device_id None = clear the pin and let
+    # normal preference rules choose (external
+    # mic wins if one is plugged in).
+
+    global mic_stream
+    global input_ready
+    global recognizer
+
+    if device_id is not None:
+        devices = _list_input_devices()
+
+        names = [
+            device["name"]
+            for index, device in devices
+            if index == device_id
+        ]
+
+        if not names:
+            return (
+                f"Chief, there is no microphone "
+                f"number {device_id} right now. "
+                "Say 'list microphones' to see "
+                "what I can reach."
+            )
+
+        settings_store.set_setting(
+            "mic_device_id",
+            device_id
+        )
+
+        settings_store.set_setting(
+            "mic_device_name",
+            names[0]
+        )
+
+    else:
+        settings_store.set_setting(
+            "mic_device_id",
+            None
+        )
+
+        settings_store.set_setting(
+            "mic_device_name",
+            None
+        )
+
+    try:
+        if mic_stream is not None:
+            mic_stream.close()
+
+    except Exception:
+        pass
+
+    mic_stream = None
+    input_ready = False
+    recognizer = None
+
+    if setup_stt():
+        # setup_stt persisted the actual choice;
+        # report it from the live state.
+
+        chosen = settings_store.get_setting(
+            "mic_device_name"
+        )
+
+        return (
+            "Ears switched, chief. I am now "
+            f"listening through: {chosen}."
+        )
+
+    return (
+        "I could not open that microphone, "
+        "chief. My ears are set to pick the "
+        "best device again on the next "
+        "listen."
+    )
+
+
+def auto_switch_to_external_mic():
+    # Called when chief plugs a new mic in:
+    # if an external device is present and she
+    # is NOT already on it, switch and report.
+    # Returns the spoken result, or None when
+    # there was nothing to do.
+
+    devices = _list_input_devices()
+
+    external = [
+        (index, device["name"])
+        for index, device in devices
+        if _is_external_mic_name(
+            device["name"])
+    ]
+
+    if not external:
+        return None
+
+    if settings_store.get_setting(
+            "mic_device_id") in (
+            index for index, name in external
+    ):
+        return None
+
+    index, name = external[0]
+
+    result = switch_mic_device(index)
+
+    return (
+        f"New ears detected - {name}. "
+        + result
+    )
+
+
+def external_mic_present():
+    # Returns (index, name) of the first
+    # external microphone she can see right
+    # now, or None when it is built-in ears
+    # only.
+
+    for index, device in (
+            _list_input_devices()):
+
+        if _is_external_mic_name(
+                device["name"]):
+            return index, device["name"]
+
+    return None
 
 
 def _remember_audio(chunk):
@@ -748,6 +1111,15 @@ def audio_callback(indata, frames, time_info, status):
 
     if rms > window_peak_rms:
         window_peak_rms = rms
+
+    # Loud is loud, in any window: remember the
+    # moment so cross-window attempts still pass
+    # the loudness gates.
+
+    if rms > 2000.0:
+        global last_loud_moment
+
+        last_loud_moment = time.time()
 
     out = out * block_gain
 
@@ -922,6 +1294,20 @@ def listen_for_command(max_seconds=7, _retried=False):
 
         spoken = " ".join(heard_parts).strip()
 
+        if spoken and is_noise_command(spoken):
+            # A lone function word ("this", "the")
+            # after the beep is degraded speech,
+            # not a command: treat it as silence so
+            # the brain never answers fluff and the
+            # chime tells chief to retry.
+
+            print(
+                "[Shadow EARS] only noise heard; "
+                "treating it as silence."
+            )
+
+            spoken = ""
+
         if spoken:
             return spoken
 
@@ -1025,7 +1411,17 @@ def strip_wake_word(text):
             # the caller to the beep flow instead
             # of feeding the brain garbage.
 
-            return True, _clean_command(rest)
+            rest = _clean_command(rest)
+
+            if is_noise_command(rest):
+                # Name confirmed, but what follows
+                # is a lone function word (or
+                # nothing): not a command. The
+                # caller's beep flow takes over.
+
+                return True, ""
+
+            return True, rest
 
     return False, text
 
@@ -1062,23 +1458,74 @@ def _clean_command(text):
     return " ".join(tokens)
 
 
-def _rehear_history():
+def _is_bare_address(lowered_text):
+    # True when the text is ONLY address words
+    # and unknown-token marks: "hey", "yo hey",
+    # "[unk] hey", "ok [unk]". Live-tuning
+    # lesson 2026-09-25: when chief's name
+    # syllables arrive degraded (distance, TV),
+    # the grammar emits exactly these - the
+    # address word with the name lost. That is
+    # still an attempt and must wake her.
+
+    tokens = lowered_text.split()
+
+    if not tokens or len(tokens) > 4:
+        return False
+
+    return all(
+        token in ADDRESS_WORDS or token == "[unk]"
+        for token in tokens
+    )
+
+
+def is_noise_command(text):
+    # True when the heard text cannot be a
+    # real command: pure fillers ("the") or a
+    # single function word ("this"). Multi-
+    # word phrases always pass - "what time
+    # is it" contains "is" and survives.
+
+    if not text:
+        return True
+
+    tokens = _clean_command(text).split()
+
+    if not tokens:
+        return True
+
+    return (
+        len(tokens) == 1
+        and tokens[0] in NOISE_SINGLE_WORDS
+    )
+
+
+def _rehear_history(seconds=4.0):
     # One-breath recovery: re-hear the last
     # few seconds of buffered audio with the
     # FULL vocabulary (no grammar). The wake
     # grammar only knows her names, so the
     # command in "Shadow what time is it"
     # arrives there as "[unk]" - this pass
-    # hears the real words. Returns the text
-    # after her name, or "" if none.
+    # hears the real words. Returns
+    # (name_found, command).
+
+    # seconds: how much audio to decode. The
+    # one-breath path uses 4 s (the name is
+    # already found; only the words after it
+    # matter). The second-chance net uses the
+    # full 6 s buffer: the name often sits at
+    # the leading edge, and the fresh
+    # recognizer's ivector adaptation needs
+    # lead-in context before it decodes the
+    # first word correctly (live-tuning
+    # lesson 2026-09-25: 4 s net probes kept
+    # reading "the" for real attempts).
 
     if model is None or not audio_history:
-        return ""
+        return False, ""
 
-    # Only the last ~4 seconds matter: the
-    # name and the command right after it.
-
-    allowed = int(4.0 * SAMPLE_RATE)
+    allowed = int(seconds * SAMPLE_RATE)
 
     chunks = []
 
@@ -1096,7 +1543,32 @@ def _rehear_history():
     chunks.reverse()
 
     if not chunks:
-        return ""
+        return False, ""
+
+    # DEBUG EVIDENCE: dump the exact audio the
+    # re-hear pass receives, so a garbled
+    # decode can be listened to afterwards.
+    # Overwritten on every probe.
+
+    try:
+        import wave as wave_module
+
+        with wave_module.open(
+            "Shadow_probe.wav",
+            "wb",
+        ) as wav_file:
+            wav_file.setnchannels(1)
+
+            wav_file.setsampwidth(2)
+
+            wav_file.setframerate(SAMPLE_RATE)
+
+            wav_file.writeframes(
+                b"".join(chunks)
+            )
+
+    except Exception:
+        pass
 
     rehear_recognizer = KaldiRecognizer(
         model,
@@ -1235,6 +1707,24 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
     one_breath_deadline = None
 
+    # SECOND-CHANCE NET cadence: probe the
+    # buffer every 5 s during the window when
+    # loud audio appeared. The buffer holds
+    # 6 s, so a 5 s cadence guarantees every
+    # attempt is still inside the buffer for
+    # at least one probe - an attempt at
+    # second 5 of 30 used to be unrecoverable
+    # (window-end probe only saw the last 4 s).
+
+    next_net_check = time.time() + 5.0
+
+    # Declared up top: the mid-window probe
+    # reads this, and the end-of-window block
+    # assigns it. Python forbids a use before
+    # the global statement in the same scope.
+
+    global window_peak_rms
+
     try:
         while time.time() < deadline:
 
@@ -1253,6 +1743,9 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                 and time.time() >= one_breath_deadline
             ):
                 _, command = _rehear_history()
+
+                if is_noise_command(command):
+                    return True, ""
 
                 return True, command
 
@@ -1273,6 +1766,40 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
             got_audio = True
 
             silent_rounds = 0
+
+            # Mid-window net probe: the grammar
+            # heard nothing yet (no one-breath
+            # armed) but the room got loud - re-
+            # hear the recent buffer with the
+            # full vocabulary and look for the
+            # name there.
+
+            if (
+                one_breath_deadline is None
+                and time.time() >= next_net_check
+                and (
+                    time.time() - last_loud_moment
+                    < 10.0
+                )
+            ):
+                next_net_check = (
+                    time.time() + 5.0
+                )
+
+                name_found, command = _rehear_history(
+                    seconds=6.0
+                )
+
+                if name_found:
+                    print(
+                        "[Shadow EARS] wake word recovered "
+                        "by the second-chance net."
+                    )
+
+                    if is_noise_command(command):
+                        return True, ""
+
+                    return True, command
 
             if wake_recognizer is None:
                 continue
@@ -1357,16 +1884,53 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
                     break
 
+                # Bare-address rescue: the grammar
+                # heard "hey"/"yo"/"ok" (+ maybe
+                # [unk]) but no name. With a genuinely
+                # loud source that is chief starting a
+                # phrase - the name got clipped. Treat
+                # it as an attempt. TV chatter says
+                # these words too but much quieter
+                # (~700-1400 RMS vs 2000+ up close),
+                # so the loudness gate keeps the TV
+                # from waking her.
+
+                if (
+                    one_breath_deadline is None
+                    and (
+                        time.time() - last_loud_moment
+                        < 10.0
+                    )
+                    and _is_bare_address(lowered_partial)
+                ):
+                    print(
+                        "[Shadow EARS] address without a "
+                        "clear name - assuming chief, "
+                        "waiting for the command."
+                    )
+
+                    one_breath_deadline = (
+                        time.time() + 1.5
+                    )
+
         # Time window ended: report how loud
         # the room was, so a silent failure and
         # a quiet voice look different in the
         # log.
 
-        global window_peak_rms
+        # Capture BEFORE the reset: the
+        # second-chance net below needs the
+        # real peak, and an earlier version
+        # reset first - so the net could never
+        # fire (live-tuning lesson 2026-09-25:
+        # an 8068-loudness attempt sailed
+        # through a dead net).
+
+        window_peak = window_peak_rms
 
         print(
             "[Shadow EARS] window loudness: "
-            f"{int(window_peak_rms)}"
+            f"{int(window_peak)}"
         )
 
         window_peak_rms = 0.0
@@ -1377,6 +1941,9 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
         if one_breath_deadline is not None:
             _, command = _rehear_history()
+
+            if is_noise_command(command):
+                return True, ""
 
             return True, command
 
@@ -1400,14 +1967,19 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
         # full vocabulary and look for the name
         # there instead.
 
-        if got_audio and window_peak_rms > 1500.0:
-            name_found, command = _rehear_history()
+        if got_audio and window_peak > 1500.0:
+            name_found, command = _rehear_history(
+                seconds=6.0
+            )
 
             if name_found:
                 print(
                     "[Shadow EARS] wake word recovered "
                     "by the second-chance net."
                 )
+
+                if is_noise_command(command):
+                    return True, ""
 
                 return True, command
 

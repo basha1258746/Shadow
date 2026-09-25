@@ -164,7 +164,11 @@ from voice_input import (
     listen_for_wake_word,
     flush_audio_queue,
     close_stt,
-    setup_stt
+    setup_stt,
+    list_input_devices_text,
+    switch_mic_device,
+    auto_switch_to_external_mic,
+    external_mic_present
 )
 
 # After every spoken sentence, drop the
@@ -1267,6 +1271,54 @@ def speak_briefing():
     return "Briefing read out loud, chief."
 
 
+def maybe_morning_briefing():
+    # Scheduled spoken briefing: plays once per
+    # calendar day, on the FIRST laptop boot of
+    # today (autostart mode). Sleep/wake and
+    # same-day restarts never replay it: the
+    # last-played date is persisted in
+    # settings.json. Returns True when the
+    # briefing was queued.
+
+    if not settings_store.get_setting(
+        "morning_briefing_enabled"
+    ):
+        return False
+
+    today = time.strftime("%Y-%m-%d")
+
+    last_date = settings_store.get_setting(
+        "morning_briefing_last_date"
+    )
+
+    if last_date == today:
+        # Already played today (or this is a
+        # same-day restart): stay silent.
+
+        print(
+            "[ZOYA] Morning briefing already "
+            "played today - skipping."
+        )
+
+        return False
+
+    print(
+        "[ZOYA] First boot of the day - "
+        "queuing the morning briefing."
+    )
+
+    # Persist FIRST, before speaking: if she
+    # dies mid-briefing she must not replay it.
+
+    settings_store.set_setting(
+        "morning_briefing_last_date",
+        today
+    )
+    speak_briefing()
+
+    return True
+
+
 def handle_speed_command(direction):
     current = get_speech_rate()
 
@@ -1573,6 +1625,9 @@ def show_help():
         "- 'what do you remember' / 'forget that ...'\n"
         "- 'good morning' - daily briefing\n"
         "- 'briefing spoken' - I read the briefing out loud\n"
+        "- 'morning briefing on/off' - auto-briefing on first boot of each day\n"
+        "- 'update yourself' - I pull my latest code and tell you what changed\n"
+        "- 'check for updates' - I look without touching anything\n"
         "- 'show settings' - see all my settings\n"
         "- 'semantic on' / 'semantic off' - meaning-based document search\n"
         "- 'what do you see' - look at my screen and describe it\n"
@@ -1598,6 +1653,20 @@ def show_help():
 
 
 # ---------------- ROUTING ----------------
+
+def _list_input_devices_for_route():
+    # (index, name) pairs of every capture
+    # device she can see right now.
+
+    import sounddevice as sd
+
+    return [
+        (index, device["name"])
+        for index, device in enumerate(
+            sd.query_devices())
+        if device["max_input_channels"] > 0
+    ]
+
 
 def get_response(text):
     global reply_already_spoken
@@ -1780,6 +1849,54 @@ def get_response(text):
 
         return tail_Shadow_log()
 
+    # Auto-briefing switches: handled BEFORE the
+    # 'good morning' prefix-catch below, which
+    # would otherwise swallow these phrases.
+
+    if text_lower in (
+        "morning briefing on",
+        "briefing on",
+    ):
+        settings_store.set_setting(
+            "morning_briefing_enabled",
+            True
+        )
+
+        return (
+            "Auto morning briefing is ON, chief. I "
+            "will greet you on the first boot of "
+            "each day."
+        )
+
+    if text_lower in (
+        "morning briefing off",
+        "briefing off",
+    ):
+        settings_store.set_setting(
+            "morning_briefing_enabled",
+            False
+        )
+
+        return (
+            "Auto morning briefing is OFF, chief. I "
+            "will only brief you when you ask."
+        )
+
+    if text_lower == "morning briefing status":
+        enabled = settings_store.get_setting(
+            "morning_briefing_enabled"
+        )
+
+        last = settings_store.get_setting(
+            "morning_briefing_last_date"
+        )
+
+        return (
+            "Auto morning briefing is "
+            f"{'ON' if enabled else 'OFF'}. "
+            f"Last played: {last or 'never'}."
+        )
+
     if text_lower.startswith(
         ("good morning", "morning briefing", "daily briefing")
     ) or text_lower == "briefing":
@@ -1793,6 +1910,185 @@ def get_response(text):
         "read briefing",
     ):
         return speak_briefing()
+
+    if text_lower in (
+        "check for updates",
+        "check update",
+        "check updates",
+        "any updates",
+    ):
+        import updater
+
+        try:
+            behind, subjects = (
+                updater.check_for_updates()
+            )
+
+        except Exception:
+            return (
+                "I could not reach GitHub just "
+                "now, chief. Try again in a bit."
+            )
+
+        if behind <= 0:
+            return (
+                "I am already on the latest code, "
+                "chief. Nothing new on GitHub."
+            )
+
+        spoken = "; ".join(subjects[:3])
+
+        more = (
+            f" and {behind - 3} more"
+            if behind > 3
+            else ""
+        )
+
+        return (
+            f"There are {behind} new update(s) "
+            f"waiting, chief: {spoken}{more}. "
+            "Say 'update yourself' to pull them."
+        )
+
+    if text_lower in (
+        "list microphones",
+        "list mics",
+        "what microphones do you have",
+    ):
+        return list_input_devices_text()
+
+    if text_lower in (
+        "use external microphone",
+        "use external mic",
+        "switch to external mic",
+        "switch to external microphone",
+        "use new microphone",
+        "use the new mic",
+    ):
+        found = external_mic_present()
+
+        if not found:
+            return (
+                "I do not see an external "
+                "microphone plugged in, chief. "
+                "Connect it and give it a few "
+                "seconds."
+            )
+
+        return switch_mic_device(found[0])
+
+    if text_lower in (
+        "use laptop microphone",
+        "use built-in microphone",
+        "use laptop mic",
+        "use the laptop mic",
+    ):
+        devices = _list_input_devices_for_route()
+
+        builtin = [
+            (index, name)
+            for index, name in devices
+            if "realtek" in name.lower()
+            or "array" in name.lower()
+        ]
+
+        if not builtin:
+            return (
+                "I cannot find the laptop's own "
+                "microphone, chief."
+            )
+
+        return switch_mic_device(builtin[0][0])
+
+    if text_lower.startswith(
+            "use microphone") or text_lower.startswith(
+            "use mic"):
+        words = text_lower.split()
+
+        picked = None
+
+        for word in words:
+            stripped = word.strip(".,!?;:")
+
+            if stripped.isdigit():
+                picked = int(stripped)
+
+                break
+
+        if picked is None:
+            return list_input_devices_text()
+
+        return switch_mic_device(picked)
+
+    if text_lower in (
+        "which microphone are you using",
+        "which mic are you using",
+        "what microphone are you using",
+    ):
+        import voice_input
+        import sounddevice as sd
+
+        if voice_input.mic_stream is None:
+            return (
+                "My ears are not open right now, "
+                "chief."
+            )
+
+        try:
+            info = sd.query_devices(
+                voice_input.mic_stream.device
+            )
+
+        except Exception:
+            return (
+                "I lost track of my microphone, "
+                "chief. Say 'list microphones'."
+            )
+
+        return (
+            "I am listening through device "
+            f"{info['index']}: {info['name']}."
+        )
+
+    if text_lower in (
+        "update yourself",
+        "update yourself now",
+        "self update",
+    ):
+        import updater
+
+        updated, subjects, note = (
+            updater.pull_updates()
+        )
+
+        if not updated:
+            if "blocked" in note:
+                return (
+                    f"I could not update myself, chief. "
+                    f"{note}."
+                )
+
+            return (
+                "I am already on the latest code, "
+                "chief. Nothing to upgrade."
+            )
+
+        if subjects:
+            # She speaks it right away, then marks
+            # it announced so the next boot does
+            # not repeat it.
+
+            updater.mark_announced()
+
+            spoken = "; ".join(subjects[:3])
+
+            return (
+                "I just upgraded myself, chief. New "
+                f"in this update: {spoken}. A restart "
+                "will bring the new code to life."
+            )
+
+        return "I just upgraded myself, chief."
 
     if text_lower in ("backup", "backup now", "create backup"):
         return backup.create_backup_text()
@@ -2096,6 +2392,26 @@ def voice_chat_mode():
 
             pause_logged = False
 
+            # Plug-in detection: did an external
+            # microphone appear since the last
+            # loop pass? Cheap - just a device
+            # name scan, no stream is touched.
+
+            try:
+                swap_message = (
+                    auto_switch_to_external_mic()
+                )
+
+                if swap_message:
+                    speak(swap_message)
+
+                    wait_until_speech_done()
+
+                    flush_audio_queue()
+
+            except Exception:
+                pass
+
             if wake_mode:
                 tray_icon.set_state(
                     listening=True,
@@ -2209,6 +2525,49 @@ def voice_chat_mode():
             time.sleep(2.0)
 
 
+def _restart_running_Shadow():
+    # Kill the background autostart pythonw
+    # (quote-free PowerShell probe - the -Filter
+    # variant silently matched nothing) and
+    # relaunch her through the VBS so she comes
+    # back with the new code/device.
+
+    import subprocess
+
+    try:
+        subprocess.run(
+            [
+                "powershell", "-NoProfile", "-Command",
+                "Get-CimInstance Win32_Process | "
+                "Where-Object { $_.Name -eq 'pythonw.exe' "
+                "-and $_.CommandLine -like '*Shadow.py*' } | "
+                "ForEach-Object { Stop-Process -Id "
+                "$_.ProcessId -Force }",
+            ],
+            timeout=30,
+        )
+
+    except Exception:
+        pass
+
+    try:
+        subprocess.run(
+            [
+                "cscript", "//nologo",
+                os.path.join(
+                    os.path.dirname(
+                        os.path.abspath(__file__)
+                    ),
+                    "start_Shadow_autostart.vbs",
+                ),
+            ],
+            timeout=30,
+        )
+
+    except Exception:
+        pass
+
+
 def main():
     # Terminal health commands, handled before
     # anything else: they must not spawn a
@@ -2217,6 +2576,120 @@ def main():
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == "status":
         print(build_status_text())
+
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "mic":
+        # Terminal ear kit: 'Shadow mic' lists what
+        # she can hear through; 'Shadow mic 3' pins
+        # device 3 as her ear and restarts her so
+        # it takes effect immediately.
+
+        import voice_input
+
+        if len(sys.argv) > 2 and sys.argv[2].isdigit():
+            target = int(sys.argv[2])
+
+            print(
+                voice_input.switch_mic_device(target)
+            )
+
+            print(
+                "Restarting her so the new ear goes "
+                "live..."
+            )
+
+            _restart_running_Shadow()
+
+            print(
+                "She is waking up on it - about 20 "
+                "seconds to warm her ears."
+            )
+
+        else:
+            print(
+                voice_input.list_input_devices_text()
+            )
+
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "update":
+        if len(sys.argv) > 2 and sys.argv[2].lower() == "check":
+            # Read-only update check: report what
+            # is new on GitHub without pulling.
+            # Her working tree is never touched.
+
+            import updater
+
+            try:
+                behind, subjects = (
+                    updater.check_for_updates()
+                )
+
+            except Exception as check_error:
+                print(
+                    "Shadow update check failed: "
+                    f"{check_error}"
+                )
+
+                return
+
+            if behind <= 0:
+                print(
+                    "Shadow update check: already "
+                    "up to date. Nothing new on "
+                    "GitHub."
+                )
+
+                return
+
+            print(
+                f"Shadow update check: {behind} new "
+                "commit(s) waiting on GitHub:"
+            )
+
+            for subject in subjects:
+                print("  - " + subject)
+
+            print(
+                "Run 'Shadow update' to pull "
+                "and restart her."
+            )
+
+            return
+
+        # Terminal self-update: pull, then restart
+        # the running Shadow so the new code comes
+        # alive and she announces the changes on
+        # boot. The announcement stays pending
+        # until that boot, so she never skips it.
+
+        import updater
+
+        updated, subjects, note = (
+            updater.pull_updates()
+        )
+
+        if not updated:
+            print(
+                f"Shadow update: {note}."
+            )
+
+            return
+
+        print("Shadow update: pulled " + str(len(subjects)) + " changes:")
+
+        for subject in subjects:
+            print("  - " + subject)
+
+        print("Restarting her so it goes live...")
+
+        _restart_running_Shadow()
+
+        print(
+            "She is waking up and will tell you "
+            "what is new."
+        )
 
         return
 
@@ -2316,6 +2789,116 @@ def main():
                     "My microphone did not start, chief. "
                     "I will keep trying."
                 )
+
+        # Scheduled greeting: on the FIRST boot of
+        # the day she reads the morning briefing
+        # aloud (unless chief switched it off or
+        # it already played today). Queue it after
+        # the short hello so they play in order.
+
+        try:
+            maybe_morning_briefing()
+
+        except Exception:
+            # A briefing failure must never stop
+            # her from listening.
+
+            print("[ZOYA] Morning briefing failed:")
+
+            traceback.print_exc()
+
+        # Passive update check: compare with
+        # GitHub WITHOUT pulling. If new commits
+        # are waiting, she offers them right
+        # here - adjacent to the morning
+        # briefing - once per release. Chief
+        # says 'update yourself' to pull.
+
+        try:
+            import updater
+
+            behind, subjects = (
+                updater.get_boot_update_news()
+            )
+
+            if behind > 0 and subjects \
+                    and voice_enabled:
+                spoken = "; ".join(
+                    subjects[:3]
+                )
+
+                more = (
+                    f" and {behind - 3} more"
+                    if behind > 3
+                    else ""
+                )
+
+                plural = (
+                    "s are"
+                    if behind != 1
+                    else " is"
+                )
+
+                speak(
+                    f"Chief, {behind} new "
+                    f"update{plural} waiting on "
+                    f"GitHub: {spoken}{more}. "
+                    "Say 'update yourself' "
+                    "whenever you want them "
+                    "installed."
+                )
+
+        except Exception:
+            print(
+                "[ZOYA] Boot update check failed:"
+            )
+
+            traceback.print_exc()
+
+        # Self-update announcement: if new code
+        # landed while she was away (via
+        # 'Shadow update' or a manual pull), she
+        # tells chief what changed - exactly once.
+
+        try:
+            import updater
+
+            new_things = (
+                updater.get_pending_announcement()
+            )
+
+            if new_things and voice_enabled:
+                speak(
+                    "I upgraded myself while you were "
+                    "away, chief."
+                )
+
+                speak(
+                    "New: "
+                    + "; ".join(new_things[:3])
+                    + "."
+                )
+
+        except Exception:
+            pass
+
+        # Hot ear swap: if chief plugged an
+        # external microphone in since the last
+        # boot, switch to it and say so. Costs
+        # nothing when there is no external mic.
+
+        try:
+            swap_message = (
+                auto_switch_to_external_mic()
+            )
+
+            if swap_message and voice_enabled:
+                speak(swap_message)
+
+        except Exception:
+            print("[ZOYA EARS] External mic swap failed:")
+
+            traceback.print_exc()
 
         try:
             voice_chat_mode()

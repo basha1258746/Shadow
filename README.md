@@ -11,7 +11,7 @@ A **local-first AI companion** for Windows — she hears you, talks with you, se
 | Ability | How to use it |
 |---|---|
 | 🧠 **Local brain** | Just talk to her — Qwen3 (1.7B) via Ollama, fully offline |
-| 🎙 **Hears you** | `voice chat` → say **"Shadow"** → hands-free conversation (offline Vosk STT) |
+| 🎙 **Hears you** | `voice chat` → say **"Shadow"** → beep → talk. Or skip the beep: **"Shadow what time is it"** in one breath (offline Vosk STT + wake grammar) |
 | 🗣 **Talks to you** | Sentence-by-sentence speech while she thinks; `speak faster` / `slower` |
 | 👁 **Sees your screen** | `what do you see` / `look at my screen and <question>` / GUI 👁 Eyes button |
 | 👀 **Watches a window** | `watch notepad` → announces + summarizes content changes |
@@ -83,6 +83,7 @@ Shadow/
 ├── file_control.py      # List folders
 ├── backup.py            # Timestamped snapshots + restore
 ├── settings.py          # Persisted settings
+├── Shadow.bat             # Terminal command center: status / log / start / stop
 ├── mic_test_now.py      # Mic calibration sweep (self-healing helper)
 ├── vision_session.py    # Timed screen-observation diary
 ├── memory.json          # Her long-term memory
@@ -119,7 +120,61 @@ close document            remember that ...         backup now / list backups / 
 my name is ...            remember project x: ...   show settings
 what do you know about me show project x            listen  (one spoken command)
 what do you remember      forget that ...           voice chat  (hands-free mode)
+briefing spoken           Shadow log  (session log)
+check for updates         update yourself  (pull + restart)
 ```
+
+### The terminal command center — `Shadow` from any folder
+
+`Shadow.bat` is installed on the PATH (a 3-line forwarder in
+`%LOCALAPPDATA%\Microsoft\WindowsApps` pointing at the repo's copy — one
+source of truth), so these work from **cmd, PowerShell, anywhere**:
+
+```
+Shadow status      is she running? brain online? what did she last hear? errors?
+Shadow log [N]     her last N log lines of the current session (default 40)
+Shadow start       wake her now (same as laptop boot)
+Shadow stop        put her to sleep
+Shadow update check    just report what is new on GitHub, pull nothing
+Shadow update      pull her latest code and restart her
+Shadow             the command list
+```
+
+`Shadow status` checks the real autostart process by its command line (quote-free
+PowerShell probe — the `-Filter` variant silently matched nothing), pings
+Ollama, and summarizes the session: what she last heard and any errors.
+The bat prefers her exact Python 3.14 interpreter and falls back to whatever
+`python` is on PATH.
+
+### Her ears — pick a microphone
+
+`Shadow mic` / say *"Shadow, list microphones"* — shows every ear she can reach and
+marks the current one. "Shadow, which mic are you using" reports the live stream
+device; "Shadow, use external mic" / "use laptop microphone" hot-swaps without a
+restart, and `Shadow mic N` pins device N. A USB mic in her name-preference list
+(yeti, snowball, logitech, webcam, speakerphone, headset…) wins over the
+built-in array on its own the moment it's plugged in — she announces the swap.
+Bluetooth hands-free devices never auto-win (narrowband, echo-prone audio);
+pin those by hand: `Shadow mic 29`.
+
+### Self-updates — she upgrades herself
+
+Shadow watches her own GitHub repo (`basha1258746/Shadow`, private). Two ways in,
+both safe by design:
+
+- **`Shadow update check`** (or say *"Shadow, check for updates"*) — fetches and
+  compares only. She reports how many commits are waiting and what they are.
+  Her working tree is **never touched** — this is pure window-shopping.
+- **`Shadow update`** (or say *"Shadow, update yourself"*) — pulls with
+  `--ff-only`, refuses on any conflict (chief's uncommitted work is never
+  discarded), restarts her, and she **speaks the changelog on boot**: "I
+  upgraded myself while you were away, chief. New: …" — announced once, never
+  repeated.
+- **Every boot she checks quietly** (fetch + compare, still no pulling) and —
+  next to the morning briefing — mentions new commits **once per release**:
+  "Chief, 2 new updates are waiting on GitHub: … Say 'update yourself' when you
+  want them installed." She won't nag on later boots, and offline boots stay
+  silent.
 
 ---
 
@@ -130,8 +185,26 @@ This laptop's SST microphone array taught us everything the hard way — if her 
 - **Warm-up dead zone** — the first ~12 s of any session capture loud-but-garbled audio; she warms up at startup so her *first* listen works
 - **Never re-open a settled stream** — reopening resets the dead zone; healthy streams are reused and rebuilt only on failure
 - **Open the mic natively (1 ch @ 48 kHz)** — the driver mixes the array cleanly; manual multi-channel downmix folds ultrasonic garbage into the speech band
-- **Self-healing retries** — a failed listen triggers one rebuild + re-warm
+- **Self-healing retries** — a dead stream triggers one rebuild + re-warm; a *healthy* stream is never rebuilt (each rebuild costs ~12 s of deafness — that trap once made her miss the wake word one time in three)
 - **`python mic_test_now.py`** — count out loud for ~40 s; she tests every mic config and re-picks her best ear automatically
+
+---
+
+## 👂 Ear architecture (how she listens)
+
+Her wake word went through four live-tuned layers — each one earned by a real failure in `Shadow.log`:
+
+1. **Name-only wake grammar** — the wake recognizer is restricted to a tiny vocabulary: her names, soundalikes (zoe, sonya, joya…), and `[unk]`. Vosk's full language model kept winning "Shadow" over words like *the*; with the grammar, the name is one of the only legal outputs and wins every time. TV chatter bounces off as `[unk]`.
+2. **One-breath commands** — a rolling 6-second audio buffer rides along. When the grammar catches her name, she waits for the phrase to end (~1.5 s of quiet), then **re-hears the buffer with the full vocabulary** and pulls out the command. "Shadow what time is it" → direct answer, no beep. Name alone → the beep flow.
+3. **Second-chance net** — every 5 s (and at window end) when the room was loud but the grammar matched nothing, she re-hears the full buffer and looks for her name there. Fast, loud attempts that mangle in the grammar get recovered.
+4. **Bare-address rescue** — when her name's syllables arrive degraded (distance, TV), the grammar emits exactly `hey`, `[unk] hey`, `yo hey`. If that happens while the room is genuinely loud, she assumes it's you starting a phrase and waits for the command. TV says "hey" too — but far quieter, so a loudness gate (RMS > 2000) keeps it out.
+
+**Noise gates, both directions:**
+
+- *Before waking:* leading/trailing filler tokens (`the`, `a`, `[unk]`, `hey`, `ok`…) are stripped from anything after her name; pure filler means "name only" → beep, never a garbage command to the brain
+- *After the beep:* a lone function word (`this`, `the`, `it`…) is treated as silence → the subtle **ear-cone chime** tells you to retry, instead of the brain answering fluff. Middle words are never touched — "what **the** time is it" survives
+
+**Diagnostics:** everything she prints, hears, or crashes on lands in `Shadow.log` (gitignored) — even under `pythonw` with no console. `Shadow status` summarizes it; `Shadow log` reads it raw.
 
 ---
 
@@ -139,13 +212,15 @@ This laptop's SST microphone array taught us everything the hard way — if her 
 
 - [x] Core brain, tools, documents, memory
 - [x] Voice: STT, TTS, wake word, noise suppression
+- [x] Grammar wake word + one-breath commands + second-chance net
 - [x] Desktop GUI with toolbar
-- [x] Computer control with confirmation gate
+- [x] Computer control with confirmation gate (now echoing the command back)
 - [x] Screen vision + window watcher
 - [x] Phone access over LAN
+- [x] Diagnostics: Shadow.log + Shadow status/log/start/stop
+- [x] Self-updates: Shadow update check / Shadow update, spoken changelog on boot
+- [x] Auto morning briefing on first boot of each day
 - [ ] Online mode (web search / weather behind an explicit switch)
-- [ ] Multi-window watching
-- [ ] Installer + logging
 
 ---
 
@@ -155,4 +230,4 @@ This laptop's SST microphone array taught us everything the hard way — if her 
 - She is honest about being an AI: warm, playful — but no pretending to be human
 - Repo name stays **Shadow** for history; she answers to Shadow (and still answers to "Shadow" 💙)
 
-*Made with patience, one microphone bug at a time.*
+*Made with patience, one microphone bug at a time. Say "Shadow" — she's listening (and if the room eats her name, she'll chime).*
