@@ -1548,27 +1548,34 @@ def _rehear_history(seconds=4.0):
     # DEBUG EVIDENCE: dump the exact audio the
     # re-hear pass receives, so a garbled
     # decode can be listened to afterwards.
-    # Overwritten on every probe.
+    # Opt-in only (set ZOYA_DEBUG_PROBE=1):
+    # rewriting a WAV on every probe meant
+    # disk churn on every wake word for a
+    # diagnosis that is already closed.
 
-    try:
-        import wave as wave_module
+    if os.environ.get("ZOYA_DEBUG_PROBE"):
 
-        with wave_module.open(
-            "Shadow_probe.wav",
-            "wb",
-        ) as wav_file:
-            wav_file.setnchannels(1)
+        try:
+            import wave as wave_module
 
-            wav_file.setsampwidth(2)
+            with wave_module.open(
+                "Shadow_probe.wav",
+                "wb",
+            ) as wav_file:
+                wav_file.setnchannels(1)
 
-            wav_file.setframerate(SAMPLE_RATE)
+                wav_file.setsampwidth(2)
 
-            wav_file.writeframes(
-                b"".join(chunks)
-            )
+                wav_file.setframerate(
+                    SAMPLE_RATE
+                )
 
-    except Exception:
-        pass
+                wav_file.writeframes(
+                    b"".join(chunks)
+                )
+
+        except Exception:
+            pass
 
     rehear_recognizer = KaldiRecognizer(
         model,
