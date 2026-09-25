@@ -16,3 +16,6 @@ backups/
 # Old debug leftovers
 Shadow_debug.py
 python Shadow_debug.py
+
+# Runtime diagnostics log
+Shadow.log

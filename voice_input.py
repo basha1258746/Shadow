@@ -4,6 +4,8 @@ import json
 import array
 import time
 
+from collections import deque
+
 import settings as settings_store
 
 import noise_suppression
@@ -86,9 +88,32 @@ WAKE_WORDS = (
     "soya",
     "joya",
     "zoyla",
+
+    # Real words the model reaches for when
+    # the name comes fast or clipped: 2026-09-25
+    # log showed "hey" surviving while the name
+    # itself vanished. These soundalikes are in
+    # the model vocabulary, so the name can
+    # always land SOMEWHERE legal.
+
+    "zoe",
+    "zoey",
+    "sonya",
+    "sonia",
+    "soy",
+    "joy",
+    "jo",
+    "zoa",
+
     "hey Shadow",
     "ok Shadow",
     "yo Shadow",
+    "hey soya",
+    "ok soya",
+    "yo soya",
+    "hey joya",
+    "ok joya",
+    "yo joya",
 
     # Legacy name, still honored.
 
@@ -104,6 +129,35 @@ WAKE_WORDS = (
 model = None
 
 recognizer = None
+
+# Wake-word-only recognizer: restricted to a
+# tiny grammar of just her names. Vosk's full
+# language model prefers common words, so a
+# close-up "Shadow" was winning as "the" or
+# "excuse". With the grammar, the name is
+# one of the ONLY legal outputs, so it wins
+# every time. TV chatter can no longer
+# confuse the match either.
+
+WAKE_GRAMMAR = json.dumps(
+    list(WAKE_WORDS) + ["[unk]"]
+)
+
+wake_recognizer = None
+
+# Rolling buffer of the last few seconds of
+# processed audio. One-breath support: the
+# wake grammar only knows her names, so
+# "Shadow what time is it" arrives there as
+# "Shadow [unk] [unk]". When she wakes, the
+# buffer is re-heard with the FULL vocabulary
+# to recover the real command words.
+
+AUDIO_HISTORY_SECONDS = 6.0
+
+audio_history = deque()
+
+audio_history_samples = 0
 
 mic_stream = None
 
@@ -123,6 +177,13 @@ MIN_GAIN = 1.0
 MAX_GAIN = 8.0
 
 current_gain = 1.0
+
+# Loudest post-gain RMS seen in the current
+# listening window. Diagnostic for the log:
+# shows how loud chief's voice actually
+# arrives at the recognizer.
+
+window_peak_rms = 0.0
 
 # Measured 2026-09-24: this laptop's SST
 # microphone array delivers loud but garbled
@@ -363,6 +424,7 @@ def warmup_microphone(force=False):
 def setup_stt():
     global model
     global recognizer
+    global wake_recognizer
     global mic_stream
     global audio_queue
     global input_ready
@@ -439,6 +501,11 @@ def setup_stt():
 
             model = Model(model_path)
 
+            # A fresh model invalidates the old
+            # grammar recognizer.
+
+            wake_recognizer = None
+
         recognizer = KaldiRecognizer(
             model,
             SAMPLE_RATE
@@ -494,6 +561,34 @@ def setup_stt():
         return False
 
 
+def _remember_audio(chunk):
+    # Keep the last few seconds of processed
+    # audio for one-breath command recovery.
+    # Called from the audio callback, so it
+    # must be fast and never raise.
+
+    global audio_history_samples
+
+    try:
+        audio_history.append(chunk)
+
+        audio_history_samples += len(chunk) // 2
+
+        max_samples = int(
+            AUDIO_HISTORY_SECONDS * SAMPLE_RATE
+        )
+
+        while audio_history_samples > max_samples:
+            dropped = audio_history.popleft()
+
+            audio_history_samples -= (
+                len(dropped) // 2
+            )
+
+    except Exception:
+        pass
+
+
 def audio_callback(indata, frames, time_info, status):
     # The mic delivers audio at INPUT_RATE
     # (usually clean mono from the driver).
@@ -505,6 +600,8 @@ def audio_callback(indata, frames, time_info, status):
         processed = noise_suppression.process_block(
             bytes(indata)
         )
+
+        _remember_audio(processed)
 
         audio_queue.put(processed)
         return
@@ -567,6 +664,7 @@ def audio_callback(indata, frames, time_info, status):
     # amplified into fake words.
 
     global current_gain
+    global window_peak_rms
 
     rms = float(
         np_module.sqrt(
@@ -583,29 +681,58 @@ def audio_callback(indata, frames, time_info, status):
         )
 
         # Fast attack / slow release: jump the
-        # gain up quickly so the FIRST word is
-        # recognized, but come back down gently
-        # so quiet speech stays amplified.
+        # gain up VERY quickly so the FIRST word
+        # is recognized (a slow ramp was clipping
+        # quiet openings down to noise), but come
+        # back down gently so quiet speech stays
+        # amplified.
 
         if wanted > current_gain:
             current_gain = (
-                0.4 * current_gain + 0.6 * wanted
+                0.25 * current_gain + 0.75 * wanted
             )
 
         else:
+            # Loud input: duck almost instantly.
+            # 2026-09-25 lesson: a slow release
+            # here amplified chief's close-up voice
+            # into hard clipping, and clipped audio
+            # decodes as [unk] instead of Shadow.
+            # Quiet-speech continuity is unaffected:
+            # this branch only runs when the input
+            # is genuinely loud (rms > target).
+
             current_gain = (
-                0.7 * current_gain + 0.3 * wanted
+                0.2 * current_gain + 0.8 * wanted
             )
 
-    out = out * current_gain
+    # Per-block limiter: never let a loud block
+    # through at full adaptive gain. Peaks in
+    # speech reach ~4x the RMS, so anything
+    # above ~9000 post-gain is heading into the
+    # clip ceiling.
 
-    audio_queue.put(
+    block_gain = current_gain
+
+    if rms * block_gain > 9000.0:
+        block_gain = 9000.0 / rms
+
+    if rms > window_peak_rms:
+        window_peak_rms = rms
+
+    out = out * block_gain
+
+    final_bytes = (
         np_module.clip(
             out,
             -32768,
             32767
         ).astype(np_module.int16).tobytes()
     )
+
+    _remember_audio(final_bytes)
+
+    audio_queue.put(final_bytes)
 
 
 def _reset_stream():
@@ -659,8 +786,44 @@ def listen_for_command(max_seconds=7, _retried=False):
 
     silent_rounds = 0
 
+    got_audio = False
+
+    # Collect EVERY finished fragment instead of
+    # returning on the first one. 2026-09-25
+    # lesson: vosk often finalizes a tiny false
+    # start ("the") while chief is still mid-
+    # sentence, and returning at that instant
+    # threw away the rest of the command.
+
+    heard_parts = []
+
+    # After real speech ends, keep listening
+    # this much longer: vosk needs a moment of
+    # silence to finalize the tail of a
+    # sentence, and quiet speakers trail off.
+
+    grace_seconds = 2.0
+
+    grace_deadline = None
+
+    # Pre-set so the exception paths below can
+    # never hit an unbound variable.
+
+    spoken = ""
+
     try:
         while time.time() < deadline:
+
+            # Grace timer runs on the wall clock,
+            # independent of whether audio blocks
+            # keep arriving (they always do: the
+            # mic streams silence too).
+
+            if (
+                grace_deadline is not None
+                and time.time() >= grace_deadline
+            ):
+                break
 
             remaining = deadline - time.time()
 
@@ -680,6 +843,8 @@ def listen_for_command(max_seconds=7, _retried=False):
 
                 continue
 
+            got_audio = True
+
             silent_rounds = 0
 
             if recognizer.AcceptWaveform(data):
@@ -689,17 +854,47 @@ def listen_for_command(max_seconds=7, _retried=False):
                 ).get("text", "")
 
                 if final_part:
-                    return final_part
+                    print(
+                        f"[Shadow EARS] command part: "
+                        f"{final_part}"
+                    )
 
-        # Time window ended; return any phrase
-        # that was still being spoken.
+                    heard_parts.append(final_part)
 
-        final_part = json.loads(
+                    # First real words: stretch the
+                    # window so a slow command still
+                    # fits, then arm the trailing
+                    # grace timer. Every further
+                    # fragment re-arms it.
+
+                    if len(heard_parts) == 1:
+                        deadline = max(
+                            deadline,
+                            time.time() + 10.0,
+                        )
+
+                    grace_deadline = (
+                        time.time() + grace_seconds
+                    )
+
+        # Window done (or a natural pause after
+        # speech): flush whatever was still in
+        # the recognizer so a trailing phrase is
+        # never lost.
+
+        tail = json.loads(
             recognizer.FinalResult()
         ).get("text", "")
 
-        if final_part:
-            return final_part
+        if tail:
+            print(f"[Shadow EARS] command tail: {tail}")
+
+            heard_parts.append(tail)
+
+        spoken = " ".join(heard_parts).strip()
+
+        if spoken:
+            return spoken
 
     except queue.Empty:
         print(
@@ -722,21 +917,15 @@ def listen_for_command(max_seconds=7, _retried=False):
 
         return ""
 
-    spoken = " ".join(
-        part
-        for part in [
-            json.loads(recognizer.Result()).get("text", "")
-        ]
-        if part
-    )
+    # Nothing heard on a healthy stream? Only
+    # rebuild when the stream gave NO audio at
+    # all. Audio without speech just means
+    # chief stayed quiet; rebuilding a healthy
+    # stream costs ~12 s of deaf warm-up.
 
-    # Nothing heard on a healthy stream? One
-    # self-healing retry on a rebuilt, freshly
-    # warmed stream before giving up.
-
-    if not spoken and not _retried:
+    if not spoken and not _retried and not got_audio:
         print(
-            "[Shadow EARS] Nothing clear heard; "
+            "[Shadow EARS] No audio at all; "
             "rebuilding the microphone..."
         )
 
@@ -747,6 +936,12 @@ def listen_for_command(max_seconds=7, _retried=False):
             _retried=True
         )
 
+    if not spoken and not _retried:
+        print(
+            "[Shadow EARS] Audio but no clear words; "
+            "keeping the warm stream."
+        )
+
     return spoken
 
 
@@ -755,6 +950,13 @@ def flush_audio_queue():
     # heard. Used after Shadow speaks so she
     # cannot wake herself up with her own
     # voice.
+
+    # Also forget the one-breath history: her
+    # own spoken sentences land in the buffer
+    # too, and must never be re-heard as a
+    # command.
+
+    flush_audio_history()
 
     if audio_queue is None:
         return
@@ -794,19 +996,152 @@ def strip_wake_word(text):
     return False, text
 
 
+def flush_audio_history():
+    # Forget the buffered audio. Used after
+    # she speaks: her own voice must never
+    # be re-heard as a one-breath command.
+
+    global audio_history_samples
+
+    audio_history.clear()
+
+    audio_history_samples = 0
+
+
+def _rehear_history():
+    # One-breath recovery: re-hear the last
+    # few seconds of buffered audio with the
+    # FULL vocabulary (no grammar). The wake
+    # grammar only knows her names, so the
+    # command in "Shadow what time is it"
+    # arrives there as "[unk]" - this pass
+    # hears the real words. Returns the text
+    # after her name, or "" if none.
+
+    if model is None or not audio_history:
+        return ""
+
+    # Only the last ~4 seconds matter: the
+    # name and the command right after it.
+
+    allowed = int(4.0 * SAMPLE_RATE)
+
+    chunks = []
+
+    taken = 0
+
+    for chunk in reversed(audio_history):
+
+        if taken >= allowed:
+            break
+
+        chunks.append(chunk)
+
+        taken += len(chunk) // 2
+
+    chunks.reverse()
+
+    if not chunks:
+        return ""
+
+    rehear_recognizer = KaldiRecognizer(
+        model,
+        SAMPLE_RATE,
+    )
+
+    rehear_text = ""
+
+    for chunk in chunks:
+
+        try:
+            if rehear_recognizer.AcceptWaveform(
+                chunk
+            ):
+                piece = json.loads(
+                    rehear_recognizer.Result()
+                ).get("text", "")
+
+                if piece:
+                    rehear_text = (
+                        rehear_text + " " + piece
+                    ).strip()
+
+        except Exception:
+
+            continue
+
+    try:
+        tail = json.loads(
+            rehear_recognizer.FinalResult()
+        ).get("text", "")
+
+    except Exception:
+
+        tail = ""
+
+    if tail:
+        rehear_text = (
+            rehear_text + " " + tail
+        ).strip()
+
+    if not rehear_text:
+        return ""
+
+    print(
+        "[Shadow EARS] full-vocab re-hear: "
+        f"{rehear_text}"
+    )
+
+    lowered = rehear_text.lower()
+
+    for wake in sorted(
+        WAKE_WORDS,
+        key=len,
+        reverse=True,
+    ):
+        position = lowered.find(wake)
+
+        if position == -1:
+            continue
+
+        command = rehear_text[
+            position + len(wake):
+        ].strip(" ,.!?")
+
+        return command
+
+    # The name garbled differently in this
+    # pass: no reliable command to extract.
+
+    return ""
+
+
 def listen_for_wake_word(max_seconds=30, _retried=False):
     # Listen continuously. Return as soon as the
     # wake word is heard: (True, command_after_wake)
     # or (False, "") if nothing was heard.
 
+    # Uses the GRAMMAR recognizer: it can only
+    # hear her names, so the name always wins
+    # over common words.
+
     global mic_stream
+    global wake_recognizer
 
     if not setup_stt():
         return False, ""
 
+    if wake_recognizer is None and model is not None:
+        wake_recognizer = KaldiRecognizer(
+            model,
+            SAMPLE_RATE,
+            WAKE_GRAMMAR,
+        )
+
     flush_audio_queue()
 
-    recognizer.Reset()
+    if wake_recognizer is not None:
+        wake_recognizer.Reset()
 
     # Same wall-clock rule as listen_for_command:
     # the budget must mean real seconds.
@@ -815,12 +1150,51 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
     silent_rounds = 0
 
+    last_partial = ""
+
+    # Any audio at all this window means the
+    # stream is alive. Lesson from 2026-09-25:
+    # rebuilding a HEALTHY stream costs ~12 s
+    # of deaf warm-up, so she used to miss the
+    # wake word one time in three. Rebuild only
+    # when the stream gave us nothing.
+
+    got_audio = False
+
+    # ONE-BREATH protocol: when the grammar
+    # catches her name, do NOT return at once.
+    # The command after the name shows up here
+    # only as [unk] (the grammar knows names
+    # only), so she waits for the phrase to
+    # end, then re-hears the buffered audio
+    # with the FULL vocabulary to recover the
+    # real command words.
+
+    one_breath_deadline = None
+
     try:
         while time.time() < deadline:
 
             remaining = deadline - time.time()
 
             wait = max(0.05, min(1.0, remaining))
+
+            # One-breath quiet timer: once her
+            # name was heard, 1.5 s of room noise
+            # (re-armed by every new grammar event)
+            # means the phrase is over - commit
+            # and recover the command.
+
+            if (
+                one_breath_deadline is not None
+                and time.time() >= one_breath_deadline
+            ):
+                command = _rehear_history()
+
+                if command:
+                    return True, command
+
+                return True, ""
 
             try:
                 data = audio_queue.get(timeout=wait)
@@ -836,21 +1210,42 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
                 continue
 
+            got_audio = True
+
             silent_rounds = 0
 
-            if recognizer.AcceptWaveform(data):
+            if wake_recognizer is None:
+                continue
+
+            if wake_recognizer.AcceptWaveform(data):
 
                 text = json.loads(
-                    recognizer.Result()
+                    wake_recognizer.Result()
                 ).get("text", "")
 
                 if not text:
                     continue
 
+                # Show finished phrases as well, so
+                # the log reveals exactly what the
+                # recognizer guesses for the wake
+                # word (chief says Shadow, the model
+                # may write something else).
+
+                print(f"[Shadow EARS] final: {text}")
+
                 found, rest = strip_wake_word(text)
 
                 if found:
-                    return True, rest
+                    # Arm the one-breath quiet timer
+                    # instead of firing immediately:
+                    # real words may follow the name.
+
+                    one_breath_deadline = (
+                        time.time() + 1.5
+                    )
+
+                    continue
 
             else:
                 # NEW: also check the partial (in-
@@ -863,7 +1258,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
                 try:
                     partial = json.loads(
-                        recognizer.PartialResult()
+                        wake_recognizer.PartialResult()
                     ).get("partial", "")
 
                 except Exception:
@@ -871,6 +1266,17 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
                 if not partial:
                     continue
+
+                # Show what the ears receive so a
+                # silent failure (no audio at all)
+                # can be told apart from a missed
+                # wake word (audio recognized, but
+                # never matching "Shadow").
+
+                if partial != last_partial:
+                    print(f"[Shadow EARS] heard: {partial}")
+
+                    last_partial = partial
 
                 lowered_partial = partial.lower()
 
@@ -880,17 +1286,48 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                     if position == -1:
                         continue
 
-                    rest = partial[
-                        position + len(wake):
-                    ].strip(" ,.!?")
+                    # Name seen mid-phrase: (re)arm
+                    # the quiet timer and let the
+                    # phrase finish before the
+                    # full-vocabulary re-hear.
 
-                    return True, rest
+                    one_breath_deadline = (
+                        time.time() + 1.5
+                    )
 
-        # Time window ended; check the last
-        # partial phrase for the wake word.
+                    break
+
+        # Time window ended: report how loud
+        # the room was, so a silent failure and
+        # a quiet voice look different in the
+        # log.
+
+        global window_peak_rms
+
+        print(
+            "[Shadow EARS] window loudness: "
+            f"{int(window_peak_rms)}"
+        )
+
+        window_peak_rms = 0.0
+
+        # Window over with a one-breath still
+        # armed: recover the command before
+        # giving up.
+
+        if one_breath_deadline is not None:
+            command = _rehear_history()
+
+            if command:
+                return True, command
+
+            return True, ""
+
+        if wake_recognizer is None:
+            return False, ""
 
         text = json.loads(
-            recognizer.Result()
+            wake_recognizer.Result()
         ).get("text", "")
 
         found, rest = strip_wake_word(text)
@@ -898,13 +1335,17 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
         if found:
             return True, rest
 
-        # Nothing heard at all? One self-healing
-        # retry on a rebuilt, freshly warmed
-        # stream before giving up.
+        # Nothing heard at all? Rebuild the
+        # microphone ONLY if the stream was
+        # truly silent (no audio blocks at all).
+        # A window with audio but no wake word
+        # just means chief did not say it yet:
+        # the healthy stream is reused instantly
+        # on the next listen.
 
-        if not _retried:
+        if not got_audio and not _retried:
             print(
-                "[Shadow EARS] No wake word heard; "
+                "[Shadow EARS] No audio at all; "
                 "rebuilding the microphone..."
             )
 
@@ -923,6 +1364,8 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
             "Try speaking a bit louder."
         )
 
+        wake_recognizer = None
+
         _reset_stream()
 
         if not _retried:
@@ -935,6 +1378,8 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
     except Exception as error:
         print(f"[Shadow EARS] Listening error: {error}")
+
+        wake_recognizer = None
 
         _reset_stream()
 

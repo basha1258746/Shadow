@@ -2,6 +2,8 @@ import json
 import re
 import sys
 import time
+import threading
+import traceback
 import urllib.request
 import urllib.error
 import os
@@ -18,6 +20,104 @@ if sys.stdout is not None:
 
 if sys.stderr is not None:
     sys.stderr.reconfigure(errors="replace")
+
+class _LogTee:
+    # Everything Shadow prints also lands in
+    # Shadow.log, so silent autostart mode
+    # (pythonw has no console at all) can
+    # always be diagnosed afterwards.
+
+    def __init__(self, log_path, original):
+        self.log = open(
+            log_path,
+            "a",
+            encoding="utf-8",
+            errors="replace",
+        )
+
+        self.original = original
+
+    def write(self, text):
+        try:
+            self.log.write(text)
+            self.log.flush()
+
+        except Exception:
+            pass
+
+        if self.original is not None:
+            try:
+                self.original.write(text)
+
+            except Exception:
+                pass
+
+    def flush(self):
+        try:
+            self.log.flush()
+
+        except Exception:
+            pass
+
+        if self.original is not None:
+            try:
+                self.original.flush()
+
+            except Exception:
+                pass
+
+    def isatty(self):
+        return False
+
+
+def setup_logging():
+    # Under pythonw (the autostart launcher)
+    # stdout and stderr are None: every print
+    # and every crash traceback vanishes into
+    # thin air. Mirror both into Shadow.log next
+    # to Shadow.py so a silent failure can be
+    # seen the moment it happens.
+
+    log_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "Shadow.log",
+    )
+
+    sys.stdout = _LogTee(log_path, sys.stdout)
+    sys.stderr = _LogTee(log_path, sys.stderr)
+
+    def _log_crash(kind, value, tb):
+        print(
+            f"[CRASH] Unhandled {kind.__name__}: "
+            f"{value}"
+        )
+
+        traceback.print_exception(kind, value, tb)
+
+    sys.excepthook = _log_crash
+
+    def _log_thread_crash(args):
+        name = (
+            args.thread.name
+            if args.thread is not None
+            else "?"
+        )
+
+        print(
+            f"[CRASH] Thread {name} died: "
+            f"{args.exc_type.__name__}: "
+            f"{args.exc_value}"
+        )
+
+        if args.exc_traceback is not None:
+            traceback.print_exception(
+                args.exc_type,
+                args.exc_value,
+                args.exc_traceback,
+            )
+
+    threading.excepthook = _log_thread_crash
+
 
 from system_info import get_system_info
 from app_control import open_application
@@ -1114,6 +1214,58 @@ def morning_briefing():
     return "\n".join(lines)
 
 
+def speak_briefing():
+    # 'briefing spoken' - the morning briefing,
+    # read out loud. QR blocks and URLs are
+    # stripped: a QR code makes no sense in
+    # audio and the URL would be spelled out as
+    # gibberish. The PIN is spoken instead when
+    # phone access is running.
+
+    global reply_already_spoken
+
+    print("[Shadow TOOL: Reading your briefing aloud...]")
+
+    lines = morning_briefing().splitlines()
+
+    spoken_lines = []
+
+    for line in lines:
+
+        stripped = line.strip()
+
+        if not stripped or stripped.startswith("█"):
+            # Blank separators and QR pixels:
+            # nothing for the voice here.
+
+            continue
+
+        if stripped.startswith("http"):
+            continue
+
+        if stripped.startswith("PIN:"):
+            spoken_lines.append(
+                "Your phone PIN is "
+                + stripped[4:].strip()
+                + "."
+            )
+
+            continue
+
+        spoken_lines.append(stripped)
+
+    # Speak line by line: each sentence starts
+    # playing as soon as it is synthesized
+    # instead of waiting for one giant blob.
+
+    reply_already_spoken = True
+
+    for line in spoken_lines:
+        speak(line)
+
+    return "Briefing read out loud, chief."
+
+
 def handle_speed_command(direction):
     current = get_speech_rate()
 
@@ -1197,6 +1349,58 @@ WINDOW TEXT:
     return ask_ollama(messages)
 
 
+def tail_Shadow_log(lines_to_show=40):
+    # 'Shadow log' - show the newest entries from
+    # Shadow.log so chief can check what she did
+    # (and what went wrong) without opening the
+    # file. Only the current session matters:
+    # older runs are skipped.
+
+    log_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "Shadow.log",
+    )
+
+    if not os.path.exists(log_path):
+        return (
+            "I have no log yet, chief. I start one "
+            "every time I wake up."
+        )
+
+    try:
+        with open(
+            log_path,
+            "r",
+            encoding="utf-8",
+            errors="replace",
+        ) as log_file:
+            all_lines = log_file.read().splitlines()
+
+    except Exception as error:
+        return f"I could not read my log, chief: {error}"
+
+    # Find the newest 'Session started' marker:
+    # everything before it is an older run.
+
+    start = 0
+
+    for index, line in enumerate(all_lines):
+        if "Session started" in line:
+            start = index
+
+    session_lines = all_lines[start:]
+
+    if len(session_lines) > lines_to_show:
+        session_lines = session_lines[-lines_to_show:]
+
+    header = (
+        f"[Shadow.log - last {len(session_lines)} "
+        "lines of this session]"
+    )
+
+    return header + "\n" + "\n".join(session_lines)
+
+
 def show_help():
     return (
         "Here is what I can do, chief:\n"
@@ -1212,6 +1416,7 @@ def show_help():
         "- 'show project <name>' - project notes\n"
         "- 'what do you remember' / 'forget that ...'\n"
         "- 'good morning' - daily briefing\n"
+        "- 'briefing spoken' - I read the briefing out loud\n"
         "- 'show settings' - see all my settings\n"
         "- 'semantic on' / 'semantic off' - meaning-based document search\n"
         "- 'what do you see' - look at my screen and describe it\n"
@@ -1230,6 +1435,7 @@ def show_help():
         "- 'speak faster' / 'speak slower' / 'speak normal'\n"
         "- 'listen' - say one command out loud\n"
         "- 'voice chat' - talk to Shadow hands-free\n"
+        "- 'Shadow log' - show what I have been up to\n"
         "- anything else - just talk to me"
     )
 
@@ -1392,10 +1598,32 @@ def get_response(text):
     if text_lower in ("help", "what can you do"):
         return show_help()
 
+    if text_lower in (
+        "Shadow log",
+        "show log",
+        "log",
+    ):
+        # A log is for reading, not for hearing:
+        # mark it as already spoken so she does
+        # not recite it.
+
+        reply_already_spoken = True
+
+        return tail_Shadow_log()
+
     if text_lower.startswith(
         ("good morning", "morning briefing", "daily briefing")
     ) or text_lower == "briefing":
         return morning_briefing()
+
+    if text_lower in (
+        "briefing spoken",
+        "spoken briefing",
+        "speak the briefing",
+        "read the briefing",
+        "read briefing",
+    ):
+        return speak_briefing()
 
     if text_lower in ("backup", "backup now", "create backup"):
         return backup.create_backup_text()
@@ -1665,46 +1893,95 @@ def voice_chat_mode():
 
     flush_audio_queue()
 
+    print(
+        "[VOICE CHAT] Ready. Paused from tray: "
+        f"{tray_icon.pause_event.is_set()}"
+    )
+
     wake_mode = True
 
+    pause_logged = False
+
     while True:
-        # The tray pause button freezes listening:
-        # she idles until chief resumes her from
-        # the tray menu.
+        try:
+            # The tray pause button freezes listening:
+            # she idles until chief resumes her from
+            # the tray menu.
 
-        if tray_icon.pause_event.is_set():
-            tray_icon.set_state(
-                listening=False,
-                status_text="mic paused from tray",
-            )
+            if tray_icon.pause_event.is_set():
+                tray_icon.set_state(
+                    listening=False,
+                    status_text="mic paused from tray",
+                )
 
-            time.sleep(0.4)
-            continue
+                if not pause_logged:
+                    print(
+                        "[VOICE CHAT] Paused from the tray "
+                        "menu - waiting for resume."
+                    )
 
-        if wake_mode:
-            tray_icon.set_state(
-                listening=True,
-                status_text="listening for Shadow",
-            )
+                    pause_logged = True
 
-            print("[VOICE CHAT] ...listening for 'Shadow'...")
-
-            found, command = listen_for_wake_word(30)
-
-            if not found:
+                time.sleep(0.4)
                 continue
 
-            print("[VOICE CHAT] Wake word detected!")
+            pause_logged = False
 
-            tray_icon.set_state(
-                listening=False,
-                status_text="working on your command",
-            )
+            if wake_mode:
+                tray_icon.set_state(
+                    listening=True,
+                    status_text="listening for Shadow",
+                )
 
-            if command:
-                print(f"You (voice): {command}")
+                print("[VOICE CHAT] ...listening for 'Shadow'...")
 
-                result = process_voice_command(command)
+                found, command = listen_for_wake_word(30)
+
+                if not found:
+                    continue
+
+                print("[VOICE CHAT] Wake word detected!")
+
+                tray_icon.set_state(
+                    listening=False,
+                    status_text="working on your command",
+                )
+
+                if command:
+                    print(f"You (voice): {command}")
+
+                    result = process_voice_command(command)
+
+                    if result is False:
+                        break
+
+                    if result == "open":
+                        wake_mode = False
+
+                    continue
+
+                # Just the wake word: ask for the
+                # command with a short chime. Nine
+                # seconds because the chime itself
+                # eats ~1.5 s of the window before
+                # chief can even start talking.
+
+                speak("Yes chief?")
+                wait_until_speech_done()
+
+                flush_audio_queue()
+
+                print("[VOICE CHAT] Beep!")
+
+                heard = listen_for_command(9)
+
+                if not heard:
+                    print("[VOICE CHAT] I did not hear anything.")
+                    continue
+
+                print(f"You (voice): {heard}")
+
+                result = process_voice_command(heard)
 
                 if result is False:
                     break
@@ -1712,65 +1989,68 @@ def voice_chat_mode():
                 if result == "open":
                     wake_mode = False
 
-                continue
+            else:
+                print("[VOICE CHAT] Beep!")
 
-            # Just the wake word: ask for the
-            # command with a short chime.
+                heard = listen_for_command(7)
 
-            speak("Yes chief?")
-            wait_until_speech_done()
+                if not heard:
+                    print("[VOICE CHAT] I did not hear anything.")
+                    speak("I did not hear anything, chief.")
+                    wait_until_speech_done()
+                    flush_audio_queue()
+                    continue
 
-            flush_audio_queue()
+                print(f"You (voice): {heard}")
 
-            print("[VOICE CHAT] Beep!")
+                lowered = heard.lower().strip()
 
-            heard = listen_for_command(7)
+                if lowered == "wake word on":
+                    speak("Wake word on. Say Shadow to talk to me.")
+                    wait_until_speech_done()
+                    flush_audio_queue()
 
-            if not heard:
-                print("[VOICE CHAT] I did not hear anything.")
-                continue
+                    wake_mode = True
+                    continue
 
-            print(f"You (voice): {heard}")
+                result = process_voice_command(heard)
 
-            result = process_voice_command(heard)
+                if result is False:
+                    break
 
-            if result is False:
-                break
+        except (KeyboardInterrupt, EOFError):
+            raise
 
-            if result == "open":
-                wake_mode = False
+        except Exception:
+            # One bad listen must never kill the
+            # whole hands-free session: log it
+            # (Shadow.log keeps it) and try again.
 
-        else:
-            print("[VOICE CHAT] Beep!")
+            print("[VOICE CHAT] Loop error:")
 
-            heard = listen_for_command(7)
+            traceback.print_exc()
 
-            if not heard:
-                print("[VOICE CHAT] I did not hear anything.")
-                speak("I did not hear anything, chief.")
-                wait_until_speech_done()
-                flush_audio_queue()
-                continue
-
-            print(f"You (voice): {heard}")
-
-            lowered = heard.lower().strip()
-
-            if lowered == "wake word on":
-                speak("Wake word on. Say Shadow to talk to me.")
-                wait_until_speech_done()
-                flush_audio_queue()
-
-                wake_mode = True
-                continue
-
-            result = process_voice_command(heard)
-
-            if result is False:
-                break
+            time.sleep(2.0)
 
 
 def main():
+    # Silent mode (pythonw autostart) has no
+    # console: everything she prints must also
+    # land in Shadow.log or it is lost forever.
+
+    setup_logging()
+
+    print()
+    print(
+        f"[ZOYA] Session started "
+        f"{time.strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+
+    print(
+        f"[ZOYA] Python {sys.version.split()[0]}, "
+        f"folder {os.getcwd()}"
+    )
+
     # The tray icon comes alive in every mode:
     # she is visible and controllable from the
     # clock, always.
@@ -1832,6 +2112,14 @@ def main():
             print(
                 f"[ZOYA EARS] Warm-up failed: {error}"
             )
+
+            traceback.print_exc()
+
+            if voice_enabled:
+                speak(
+                    "My microphone did not start, chief. "
+                    "I will keep trying."
+                )
 
         try:
             voice_chat_mode()
