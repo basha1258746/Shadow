@@ -1,0 +1,10 @@
+{
+    "name": "wifi",
+    "description": "which Wi-Fi network she is on",
+    "match": ["wifi", "which wifi", "wi-fi"],
+    "steps": [
+        {
+            "run": "netsh wlan show interfaces"
+        }
+    ]
+}

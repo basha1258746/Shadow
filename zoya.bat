@@ -12,6 +12,7 @@ if exist "C:\Users\us448\AppData\Local\Python\pythoncore-3.14-64\python.exe" set
 if /i "%~1"=="status" %PY% "C:\Users\us448\Shadow\Shadow.py" status & goto :done
 if /i "%~1"=="log" %PY% "C:\Users\us448\Shadow\Shadow.py" log %~2 & goto :done
 if /i "%~1"=="mic" %PY% "C:\Users\us448\Shadow\Shadow.py" mic %~2 & goto :done
+if /i "%~1"=="skills" %PY% "C:\Users\us448\Shadow\Shadow.py" skills & goto :done
 if /i "%~1"=="update" %PY% "C:\Users\us448\Shadow\Shadow.py" update %~2 & goto :done
 if /i "%~1"=="start" (
     cscript //nologo "C:\Users\us448\Shadow\start_Shadow_autostart.vbs"
@@ -28,6 +29,7 @@ echo   Shadow status    health check: process, brain, last heard, errors
 echo   Shadow log [N]   last N log lines of the current session (default 40)
 echo   Shadow start     wake her now
 echo   Shadow stop      put her to sleep
+echo   Shadow skills    list her drop-in skills
 echo   Shadow mic       list microphones she can reach
 echo   Shadow mic N     pin device N as her ear and restart her
 echo   Shadow update    pull her latest code and restart her

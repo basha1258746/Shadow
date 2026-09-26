@@ -1,0 +1,10 @@
+{
+    "name": "college timetable",
+    "description": "today's class timings, pasted by chief",
+    "match": ["timetable", "class timings", "college timetable"],
+    "steps": [
+        {
+            "say": "Monday: Class One 9-10, Class Two 10-11, Lab Session 2-4. Tuesday: Class Three 9-10, Maths 11-12. Wednesday: SOM 9-10, FM 10-11, Maths 2-3. Thursday: Thermo 9-10, Lab Session 2-4. Friday: Maths 11-12, Design Lab 2-4."
+        }
+    ]
+}

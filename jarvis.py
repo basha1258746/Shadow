@@ -184,6 +184,16 @@ MEMORY_FILE = "memory.json"
 MAX_HISTORY = 12
 VOICE_ENABLED = True
 
+# Skill loader state (drop-in commands from
+# skills/, borrowed from OpenShadow). Load
+# once per process; errors are kept so
+# 'my skills' can report broken files
+# instead of silently ignoring them.
+
+_skill_cache = {"loaded": False}
+
+_skill_errors = []
+
 
 # ---------------- MEMORY ----------------
 
@@ -1627,6 +1637,7 @@ def show_help():
         "- 'briefing spoken' - I read the briefing out loud\n"
         "- 'morning briefing on/off' - auto-briefing on first boot of each day\n"
         "- 'update yourself' - I pull my latest code and tell you what changed\n"
+        "- 'my skills' - what I learned from my drop-in skills folder\n"
         "- 'check for updates' - I look without touching anything\n"
         "- 'show settings' - see all my settings\n"
         "- 'semantic on' / 'semantic off' - meaning-based document search\n"
@@ -1694,6 +1705,45 @@ def get_response(text):
 
     if not text:
         return "Yes, chief?"
+
+    # ---- SKILLS: DROP-IN COMMANDS ----
+    #
+    # JSON files in skills/ teach her new
+    # tricks without touching this code. They
+    # are re-read on every request, so chief
+    # can drop a new one in while she runs
+    # and it works on the very next listen.
+
+    global _skill_errors
+
+    if not _skill_cache["loaded"]:
+        _skill_cache["loaded"] = True
+
+        try:
+            import Shadow_skills
+
+            _skill_errors = (
+                Shadow_skills.load_all_skills()[1]
+            )
+
+        except Exception:
+            _skill_errors = [
+                "skills folder could not "
+                "be read"
+            ]
+
+    try:
+        import Shadow_skills
+
+        skill_reply = Shadow_skills.try_skill(
+            text_lower
+        )
+
+        if skill_reply is not None:
+            return skill_reply
+
+    except Exception:
+        pass
 
     # ---- COMPUTER CONTROL: CONFIRMATION GATE ----
 
@@ -2049,6 +2099,27 @@ def get_response(text):
             "I am listening through device "
             f"{info['index']}: {info['name']}."
         )
+
+    if text_lower in (
+        "my skills",
+        "list skills",
+        "show skills",
+        "what are your skills",
+    ):
+        import Shadow_skills
+
+        listing = (
+            Shadow_skills.list_skills_text()
+        )
+
+        if _skill_errors:
+            listing = listing + (
+                "\n(Heads up: some skill files "
+                "are broken - see the list "
+                "above.)"
+            )
+
+        return listing
 
     if text_lower in (
         "update yourself",
@@ -2610,6 +2681,16 @@ def main():
             print(
                 voice_input.list_input_devices_text()
             )
+
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "skills":
+        # List her drop-in skills (and any
+        # broken files) without waking her.
+
+        import Shadow_skills
+
+        print(Shadow_skills.list_skills_text())
 
         return
 

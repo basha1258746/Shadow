@@ -122,6 +122,7 @@ what do you know about me show project x            listen  (one spoken command)
 what do you remember      forget that ...           voice chat  (hands-free mode)
 briefing spoken           Shadow log  (session log)
 check for updates         update yourself  (pull + restart)
+my skills                 what her skills folder taught her
 ```
 
 ### The terminal command center — `Shadow` from any folder
@@ -135,6 +136,7 @@ Shadow status      is she running? brain online? what did she last hear? errors?
 Shadow log [N]     her last N log lines of the current session (default 40)
 Shadow start       wake her now (same as laptop boot)
 Shadow stop        put her to sleep
+Shadow skills      her drop-in skills (and any broken files)
 Shadow update check    just report what is new on GitHub, pull nothing
 Shadow update      pull her latest code and restart her
 Shadow             the command list
@@ -175,6 +177,36 @@ both safe by design:
   "Chief, 2 new updates are waiting on GitHub: … Say 'update yourself' when you
   want them installed." She won't nag on later boots, and offline boots stay
   silent.
+
+### Skills — teach her new tricks without coding
+
+Borrowed from Stanford's **OpenShadow** framework: every command she knows
+used to live deep in her source. Now `skills/*.json` files are drop-in
+lessons — she re-reads the folder on **every request**, so a new file works
+on her very next listen, no restart.
+
+```json
+{
+    "name": "battery",
+    "description": "how charged the laptop is right now",
+    "match": ["battery", "battery status"],
+    "steps": [
+        { "run": "powershell -NoProfile -Command (Get-CimInstance Win32_Battery).EstimatedChargeRemaining" },
+        { "say": "percent, chief." }
+    ]
+}
+```
+
+- `match` — phrases that trigger it (exact or as a sentence prefix)
+- `steps` — in order: `run` a command (output is spoken), `say` fixed text;
+  mix freely, max 12 steps
+- Say **"my skills"** (or `Shadow skills`) to list what she learned — broken
+  files are reported honestly, never silently ignored
+
+Built-ins ship as examples: `battery`, `wifi`, and a `college timetable`
+skill chief can edit with his real class schedule. `run` is deliberately
+sandboxed: single simple commands only — no quotes, pipes, or redirection —
+so her voice can never become a shell injection.
 
 ---
 
@@ -220,6 +252,7 @@ Her wake word went through four live-tuned layers — each one earned by a real 
 - [x] Diagnostics: Shadow.log + Shadow status/log/start/stop
 - [x] Self-updates: Shadow update check / Shadow update, spoken changelog on boot
 - [x] Auto morning briefing on first boot of each day
+- [x] Drop-in skills system (borrowed from OpenShadow)
 - [ ] Online mode (web search / weather behind an explicit switch)
 
 ---

@@ -1,0 +1,13 @@
+{
+    "name": "battery",
+    "description": "how charged the laptop is right now",
+    "match": ["battery", "battery status", "battery level"],
+    "steps": [
+        {
+            "run": "powershell -NoProfile -Command (Get-CimInstance Win32_Battery).EstimatedChargeRemaining"
+        },
+        {
+            "say": "percent, chief."
+        }
+    ]
+}
