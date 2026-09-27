@@ -231,6 +231,13 @@ the dashboard you can also set and delete them with one click.
   remind me to check my timetable" / "every monday at 9 remind me to ..."
 - **Review**: "my reminders" / cancel one with "cancel reminder water"
 - Bare "remind me to X" (no time) is **refused honestly**, never guessed
+- **Routines** (the capstone): "every day at 9 read the briefing and my
+  reminders" — at fire time the briefing is read aloud (weather included
+  when the online gate is ON) and the reminder list is read out. Routines
+  **run** instead of speaking.
+- When any reminder fires, the **dashboard auto-opens** in your browser
+  with a banner — never missed, even muted (deduped per firing; the same
+  recurring reminder won't spawn tab after tab)
 
 ### The regression suite
 

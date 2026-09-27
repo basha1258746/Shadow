@@ -3464,6 +3464,80 @@ def main():
                 if voice_enabled:
                     speak(message)
 
+                # Auto-open the dashboard so the
+                # reminder is visible even with the
+                # speakers off. The server is
+                # already up (boot start); this
+                # raises a browser tab on sir's
+                # screen, deduped per reminder.
+
+                try:
+                    import dashboard_server
+
+                    dashboard_server.start_server()
+
+                    dashboard_server.reveal(
+                        focus="reminders",
+                        note=message,
+                    )
+
+                except Exception:
+                    pass
+
+            def run_routine(task_text, reminder_dict):
+                # Routine tasks RUN instead of
+                # speaking a reminder: the week-two
+                # capstone. 'every day at 9 read the
+                # briefing and my reminders' reads
+                # the morning briefing (weather
+                # included when the online gate is
+                # ON) and lists what is due.
+
+                lowered = task_text.lower()
+
+                wants_briefing = (
+                    "briefing" in lowered
+                )
+
+                wants_reminders = (
+                    "remind" in lowered
+                )
+
+                print(
+                    f"[Shadow ROUTINE] {task_text}"
+                )
+
+                if not voice_enabled:
+                    return
+
+                if wants_briefing:
+                    try:
+                        speak_briefing()
+
+                    except Exception:
+                        speak(
+                            "I could not prepare "
+                            "the briefing, sir."
+                        )
+
+                if wants_reminders:
+                    try:
+                        import reminders
+
+                        listing = (
+                            reminders
+                            .list_reminders_text()
+                        )
+
+                        speak(listing)
+
+                    except Exception:
+                        pass
+
+            reminders.set_routine_executor(
+                run_routine
+            )
+
             reminders.start_scheduler(
                 fire_reminder
             )

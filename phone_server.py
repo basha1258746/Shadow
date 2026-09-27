@@ -131,14 +131,79 @@ async function sendMsg() {
   if (!text) return false;
   box.value = '';
   addMsg(text, 'user');
-  addMsg('...', 'sys');
+
+  // Stream the reply: pieces arrive as JSON
+  // lines and render immediately (spoken via
+  // browser TTS when the speaker is on).
+  // Falls back to the plain endpoint on any
+  // stream error.
+
   try {
-    const data = await api('/api/message', {text: text});
-    document.getElementById('chat').lastChild.remove();
-    addMsg(data.reply || '(empty reply)', 'Shadow');
+    const pin = localStorage.getItem('Shadow_pin') || '';
+    const res = await fetch('/api/chat/stream', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-Shadow-PIN': pin},
+      body: JSON.stringify({text: text})
+    });
+    if (res.status === 401) {
+      document.getElementById('pinbox').style.display = 'flex';
+      return false;
+    }
+    const chat = document.getElementById('chat');
+    const live = document.createElement('div');
+    live.className = 'msg Shadow';
+    live.textContent = '...';
+    chat.appendChild(live);
+    chat.scrollTop = chat.scrollHeight;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalText = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const event = JSON.parse(line);
+          if (event.piece) {
+            if (live.textContent === '...') live.textContent = '';
+            live.textContent += event.piece;
+            if (speakOn && 'speechSynthesis' in window) {
+              const u = new SpeechSynthesisUtterance(event.piece);
+              u.rate = 1.05;
+              speechSynthesis.speak(u);
+            }
+            chat.scrollTop = chat.scrollHeight;
+          }
+          if (event.done) {
+            finalText = event.reply || '';
+          }
+        } catch (e) {}
+      }
+    }
+    if (finalText) {
+      live.textContent = finalText;
+    } else if (live.textContent === '...') {
+      live.textContent = '(empty reply)';
+    }
     poll();
   } catch (e) {
-    document.getElementById('chat').lastChild.remove();
+    // Stream unavailable - old reliable path.
+    try {
+      const data = await api('/api/message', {text: text});
+      document.getElementById('chat').lastChild.remove();
+      addMsg(data.reply || '(empty reply)', 'Shadow');
+      poll();
+    } catch (e2) {
+      const chat = document.getElementById('chat');
+      if (chat.lastChild && chat.lastChild.className.indexOf('sys') !== -1) {
+        chat.lastChild.remove();
+      }
+    }
   }
   return false;
 }
@@ -364,6 +429,92 @@ class PhoneHandler(BaseHTTPRequestHandler):
             and supplied == pin_code
         )
 
+    def _chat_stream(self, data):
+        # Live chat for the phone: the same
+        # sentence-sink pattern as the dashboard
+        # (Shadow.chat_streaming_to_dashboard),
+        # PIN-gated. JSON lines: {piece}, ...,
+        # then {done: true, reply: full}. The
+        # phone speaks pieces itself via browser
+        # TTS when the speaker toggle is on -
+        # the laptop stays silent either way.
+
+        text = str(
+            data.get("text", "")
+        ).strip()[:MAX_MESSAGE_CHARS]
+
+        if not text:
+            self._send_json(
+                {"error": "empty message"},
+                400
+            )
+
+            return
+
+        self.send_response(200)
+
+        self.send_header(
+            "Content-Type",
+            "application/x-ndjson",
+        )
+
+        self.send_header(
+            "Cache-Control",
+            "no-cache",
+        )
+
+        self.end_headers()
+
+        def on_piece(piece):
+            try:
+                line = json.dumps(
+                    {"piece": piece}
+                ) + "\n"
+
+                self.wfile.write(
+                    line.encode("utf-8")
+                )
+
+                self.wfile.flush()
+
+            except Exception:
+                pass
+
+        with brain_lock:
+            import Shadow
+
+            reply = (
+                Shadow
+                .chat_streaming_to_dashboard(
+                    text, on_piece
+                )
+            )
+
+            history.append(
+                {"who": "user", "text": text}
+            )
+
+            history.append(
+                {"who": "Shadow",
+                 "text": reply}
+            )
+
+            del history[:-40]
+
+        try:
+            closing = json.dumps(
+                {"done": True, "reply": reply}
+            ) + "\n"
+
+            self.wfile.write(
+                closing.encode("utf-8")
+            )
+
+            self.wfile.flush()
+
+        except Exception:
+            pass
+
     def do_GET(self):
         # The chat page itself (PIN gate happens
         # in the browser via the API calls).
@@ -458,6 +609,11 @@ class PhoneHandler(BaseHTTPRequestHandler):
                 del history[:-40]
 
             self._send_json({"reply": reply})
+
+            return
+
+        if self.path == "/api/chat/stream":
+            self._chat_stream(data)
 
             return
 

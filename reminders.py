@@ -36,6 +36,20 @@ _scheduler_started = False
 
 _fire_callback = None
 
+_routine_executor = None
+
+
+def set_routine_executor(executor):
+    # Registered by Shadow.py at boot: the
+    # function that RUNS routine tasks
+    # (briefing reads, reminder roundups).
+    # Lives there because routines need his
+    # voice, his briefing, his everything.
+
+    global _routine_executor
+
+    _routine_executor = executor
+
 
 # ---------------- TIME PARSING ----------------
 
@@ -240,10 +254,16 @@ def parse_reminder(text):
 
     if task is None and recurring and (
             recurring["kind"] == "daily"):
+        # With or without "remind": routine
+        # syntax ("every day at 9 read the
+        # briefing") has no remind word, so
+        # the task is whatever follows the
+        # clock.
+
         clock_match = re.match(
             r"^at\s+(\d{1,2})(?::(\d{2}))?\s*"
-            r"(am|pm)?\s+(remind me to|remind "
-            r"me|remind)\s+(.+)$",
+            r"(am|pm)?\s+(?:(?:remind me "
+            r"to|remind me|remind)\s+)?(.+)$",
             work,
         )
 
@@ -261,14 +281,14 @@ def parse_reminder(text):
             )
 
             if when_clock:
-                task = clock_match.group(5)
+                task = clock_match.group(4)
 
     if task is None and recurring and (
             recurring["kind"] == "weekly"):
         clock_match = re.match(
             r"^at\s+(\d{1,2})(?::(\d{2}))?\s*"
-            r"(am|pm)?\s+(remind me to|remind "
-            r"me|remind)\s+(.+)$",
+            r"(am|pm)?\s+(?:(?:remind me "
+            r"to|remind me|remind)\s+)?(.+)$",
             work,
         )
 
@@ -286,7 +306,7 @@ def parse_reminder(text):
             )
 
             if when_clock:
-                task = clock_match.group(5)
+                task = clock_match.group(4)
 
     if task is None and not recurring and (
             clock):
@@ -315,12 +335,26 @@ def parse_reminder(text):
         # uses the reschedule step; weekly
         # defaults to 09:00 via the reminder
         # defaults.
+        #
+        # ROUTINE syntax ("every day at 9
+        # read the briefing...") has no
+        # "remind" word: strip a leading
+        # "at HH:MM (am|pm)?" instead and
+        # the rest is the task.
 
         body = re.sub(
             r"^(remind me to|remind me|remind)\s+",
             "",
             work,
         ).strip()
+
+        if not body:
+            body = re.sub(
+                r"^at\s+\d{1,2}(?::\d{2})?\s*"
+                r"(am|pm)?\s+",
+                "",
+                work,
+            ).strip()
 
         if body:
             task = body
@@ -346,6 +380,28 @@ def parse_reminder(text):
             "%Y-%m-%d %H:%M"
         ),
     }
+
+    # Week-two capstone: known ROUTINE
+    # tasks run at fire time instead of
+    # being spoken - the briefing is read
+    # aloud, due reminders are listed, etc.
+
+    if task.lower() in (
+            "read the briefing",
+            "read my briefing",
+            "the briefing",
+            "briefing",
+            "read the briefing and my reminders",
+            "read my reminders and the briefing",
+            "the briefing and my reminders",
+            "read the briefing and reminders",
+            "briefing and reminders",
+            "read my reminders",
+            "my reminders",
+            "the reminders",
+            "reminders",
+    ):
+        reminder["routine"] = True
 
     if recurring:
         reminder["recurring"] = recurring
@@ -693,6 +749,25 @@ def _check_and_fire():
             save_reminders()
 
     for reminder in due:
+        if reminder.get("routine"):
+            # Routine tasks run instead of being
+            # spoken. The executor lives in
+            # Shadow.py (it needs the briefing);
+            # registered at boot via
+            # set_routine_executor.
+
+            try:
+                if _routine_executor:
+                    _routine_executor(
+                        reminder["task"],
+                        reminder,
+                    )
+
+            except Exception:
+                pass
+
+            continue
+
         if _fire_callback:
             try:
                 _fire_callback(

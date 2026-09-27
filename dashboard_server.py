@@ -31,6 +31,19 @@ server_thread = None
 
 MAX_MESSAGE_CHARS = 2000
 
+# Reminder auto-open bookkeeping: which
+# reminder ids have already raised a
+# browser tab, so one reminder never
+# opens a tab twice (checks fire every
+# 5 seconds until deleted).
+
+_revealed_ids = set()
+
+# One-shot banner text shown at the top of
+# the page after a reveal.
+
+_banner = None
+
 # One brain at a time (shared rule with the
 # phone server): get_response and its
 # pending_action state are not thread-safe.
@@ -242,14 +255,22 @@ def gather_state():
     # One snapshot for the page's first paint
     # and the /api/state polling.
 
+    global _banner
+
     state = {
         "status": _gather_status(),
         "reminders": _gather_reminders(),
         "lessons": _gather_lessons(),
         "last_heard": _gather_last_heard(),
+        "banner": _banner,
     }
 
     state.update(_gather_skills())
+
+    # A banner is shown once, then cleared:
+    # the page that needed it has it.
+
+    _banner = None
 
     return state
 
@@ -337,6 +358,17 @@ function esc(s){const d=document.createElement('div');d.textContent=s;return d.i
 
 function render(s){
   const dot=document.getElementById('dot');
+
+  if (s.banner){
+    let bar=document.getElementById('banner');
+    if(!bar){
+      bar=document.createElement('div');
+      bar.id='banner';
+      bar.style.cssText='background:#9e6a03;color:#fff;padding:10px 16px;font-weight:600;';
+      document.body.insertBefore(bar, document.getElementById('grid'));
+    }
+    bar.textContent=s.banner;
+  }
 
   function delBtn(kind,label){
     return ' <a href="#" class="del" onclick="'+kind+'(\''+label.replace(/'/g,"\\'")+'\');return false;">\u00d7</a>';
@@ -559,6 +591,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self._send_json({"reply": reply})
 
     def do_GET(self):
+        global _banner
+
         if self.path == "/":
             body = PAGE_TEMPLATE.encode("utf-8")
 
@@ -855,6 +889,39 @@ def _lan_ip_fallback():
     # only by design.
 
     return "127.0.0.1"
+
+
+def reveal(focus=None, note=None):
+    # Raise the dashboard in sir's browser -
+    # used when a reminder fires, so a
+    # reminder is never missed even with the
+    # speakers muted. Deduped per note: the
+    # same reminder firing again (recurring
+    # checks) does not spawn tab after tab.
+
+    global _banner
+
+    if note:
+        if note in _revealed_ids:
+            return
+
+        _revealed_ids.add(note)
+
+        if len(_revealed_ids) > 100:
+            _revealed_ids.clear()
+
+        _banner = note
+
+    try:
+        url = f"http://localhost:{SERVER_PORT}"
+
+        if focus:
+            url += "#/" + focus
+
+        webbrowser.open(url)
+
+    except Exception:
+        pass
 
 
 def start_server():

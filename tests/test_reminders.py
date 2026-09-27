@@ -206,6 +206,86 @@ def test_one_shot_fires_and_vanishes():
     assert reminders._reminders == []
 
 
+def test_routine_detection_and_execution():
+    # Week-two capstone: 'every day at 9 read
+    # the briefing and my reminders' must
+    # parse clean (no 'at 9' in the task),
+    # get the routine flag, RUN through the
+    # executor (not the speak path), and
+    # survive reschedule with the flag.
+
+    fresh_store()
+
+    parsed = reminders.parse_reminder(
+        "every day at 9 read the briefing "
+        "and my reminders"
+    )
+
+    assert parsed is not None
+
+    assert parsed["task"] == (
+        "read the briefing and my reminders"
+    ), parsed["task"]
+
+    assert parsed.get("routine") is True
+
+    assert parsed["hours"] == 9
+
+    ran, spoke = [], []
+
+    reminders.set_routine_executor(
+        lambda t, r: ran.append(t))
+
+    reminders._fire_callback = (
+        lambda t, r: spoke.append(t))
+
+    reminders.add_reminder({
+        "id": 99,
+        "task": parsed["task"],
+        "fire_at": "2020-01-01 00:00:00",
+        "created": "2020-01-01 00:00",
+        "routine": True,
+        "recurring": {"kind": "daily"},
+        "hours": 9,
+        "minutes": 0,
+    })
+
+    reminders._check_and_fire()
+
+    assert ran == [
+        "read the briefing and my reminders"
+    ], f"routine did not run: {ran}"
+
+    assert spoke == [], (
+        "routine spoke like a reminder"
+    )
+
+    assert len(reminders._reminders) == 1
+
+    assert reminders._reminders[0][
+        "routine"] is True
+
+    assert reminders._reminders[0][
+        "fire_at"] > "2020"
+
+
+def test_plain_reminder_not_routine():
+    fresh_store()
+
+    parsed = reminders.parse_reminder(
+        "every day at 7 remind me to check "
+        "my timetable"
+    )
+
+    assert parsed is not None
+
+    assert parsed["task"] == (
+        "check my timetable"
+    )
+
+    assert not parsed.get("routine")
+
+
 def test_cancel():
     fresh_store()
 
@@ -237,6 +317,8 @@ def main():
             test_store_persists,
             test_recurring_reschedules,
             test_one_shot_fires_and_vanishes,
+            test_routine_detection_and_execution,
+            test_plain_reminder_not_routine,
             test_cancel,
         ):
             try:

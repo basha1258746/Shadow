@@ -4,6 +4,10 @@ Week one (Sep 23–27) built him: ears, brain, hands, voice, memory,
 skills, self-updates, and a persona. Week two is about making him
 **anticipate** — a butler's real skill is acting before he is asked.
 
+**STATUS: options A and B are SHIPPED** — routines + reminders with a
+capstone daily routine, and the live dashboard with write actions and
+streaming chat. Remaining below.
+
 Three candidate directions, evaluated against his hardware (8 GB,
 i3), his safety rules (online gate), and what compounds with what is
 already built.
@@ -52,9 +56,12 @@ computer control; a roommate's "shut down" gets refused politely.
 
 ## The recommendation, in one line
 
-**A then B:** routines first (he anticipates), then the dashboard to
-make his inner life visible — and revisit biometrics only after the
-USB mic upgrade lands.
+**A then B:** ~~routines first, then the dashboard~~ **DONE.** Routines
+ship (daily briefing + reminder roundups, auto-opening dashboard on every
+fired reminder), the dashboard streams his thoughts live and takes write
+actions. Next candidates: dashboard on his phone (share the loopback
+page via the PIN-gated phone server), calendar/OAuth feeds into the
+briefing, or revisit biometrics after the USB mic lands.
 
 ## Also queued from this session
 
