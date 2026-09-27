@@ -1548,12 +1548,12 @@ def _rehear_history(seconds=4.0):
     # DEBUG EVIDENCE: dump the exact audio the
     # re-hear pass receives, so a garbled
     # decode can be listened to afterwards.
-    # Opt-in only (set ZOYA_DEBUG_PROBE=1):
+    # Opt-in only (set Shadow_DEBUG_PROBE=1):
     # rewriting a WAV on every probe meant
     # disk churn on every wake word for a
     # diagnosis that is already closed.
 
-    if os.environ.get("ZOYA_DEBUG_PROBE"):
+    if os.environ.get("Shadow_DEBUG_PROBE"):
 
         try:
             import wave as wave_module

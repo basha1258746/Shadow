@@ -1491,7 +1491,7 @@ def build_status_text():
 
     else:
         lines.append(
-            "Shadow: NOT RUNNING - say 'start Shadow' "
+            "Shadow: NOT RUNNING - say 'Shadow start' "
             "or reboot to wake him."
         )
 
@@ -1720,13 +1720,13 @@ def get_response(text):
     # addresses him directly.
 
     if text_lower.startswith("Shadow"):
-        text = text[4:].strip()
+        text = text[6:].strip()
         text_lower = text.lower()
 
     elif text_lower.startswith("Shadow"):
         # The old name still works.
 
-        text = text[6:].strip()
+        text = text[4:].strip()
         text_lower = text.lower()
 
     if not text:

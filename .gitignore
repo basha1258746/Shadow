@@ -19,6 +19,7 @@ python Shadow_debug.py
 
 # Runtime diagnostics log
 Shadow.log
+Shadow.log
 
 # Self-update state (changelog of the last pull)
 last_update.json
@@ -29,4 +30,5 @@ chat_log_export.jsonl
 training/*.log
 
 # Re-hear probe evidence
+Shadow_probe.wav
 Shadow_probe.wav
