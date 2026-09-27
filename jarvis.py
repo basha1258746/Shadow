@@ -49,6 +49,24 @@ class _LogTee:
             try:
                 self.original.write(text)
 
+            except UnicodeEncodeError:
+                # Windows consoles default to a
+                # legacy codepage; a pi or an emoji
+                # from an online answer must never
+                # crash a session. Downgrade to
+                # ASCII with replacements.
+
+                try:
+                    self.original.write(
+                        text.encode(
+                            "ascii",
+                            errors="replace",
+                        ).decode("ascii")
+                    )
+
+                except Exception:
+                    pass
+
             except Exception:
                 pass
 
@@ -2384,6 +2402,104 @@ def get_response(text):
         return (
             "Semantic search is OFF, sir. I will use "
             "the older keyword matching."
+        )
+
+    # ---------------- ONLINE MODE ----------------
+    # The gate: he only touches the internet
+    # after an explicit 'online on' from sir.
+
+    if text_lower in (
+        "online on",
+        "go online",
+        "enable online mode",
+    ):
+        import online_mode
+
+        return (
+            online_mode.set_online_enabled(
+                True
+            )
+        )
+
+    if text_lower in (
+        "online off",
+        "go offline",
+        "disable online mode",
+    ):
+        import online_mode
+
+        return (
+            online_mode.set_online_enabled(
+                False
+            )
+        )
+
+    if text_lower in (
+        "online status",
+        "am i online",
+        "internet status",
+    ):
+        import online_mode
+
+        return (
+            online_mode.online_status_text()
+        )
+
+    if text_lower == "weather" or (
+            text_lower.startswith("weather ")
+    ):
+        import online_mode
+
+        return online_mode.weather_text(
+            text_lower[len("weather"):].strip()
+        )
+
+    if text_lower.startswith(
+            "how is the weather") or (
+            text_lower.startswith(
+            "what is the weather")):
+        import online_mode
+
+        tail = text_lower.split(
+            "weather", 1
+        )[1]
+
+        tail = tail.replace(
+            "like", ""
+        ).replace("today", "").strip()
+
+        return online_mode.weather_text(tail)
+
+    if text_lower.startswith("look up "):
+        import online_mode
+
+        return online_mode.wiki_lookup(
+            text[len("look up "):].strip()
+        )
+
+    if text_lower.startswith(
+            "search the web for "):
+        import online_mode
+
+        return online_mode.web_search_text(
+            text[len(
+                "search the web for "):].strip()
+        )
+
+    if text_lower.startswith(
+            "search for "):
+        import online_mode
+
+        return online_mode.web_search_text(
+            text[len("search for "):].strip()
+        )
+
+    if text_lower.startswith(
+            "set my city to "):
+        import online_mode
+
+        return online_mode.set_city_text(
+            text[len("set my city to "):].strip()
         )
 
     if text_lower in ("close document", "clear document", "forget document"):

@@ -122,7 +122,12 @@ what do you know about me show project x            listen  (one spoken command)
 what do you remember      forget that ...           voice chat  (hands-free mode)
 briefing spoken           Shadow log  (session log)
 check for updates         update yourself  (pull + restart)
-my skills                 what his skills folder taught his
+my skills                 what his skills folder taught him
+my lessons                what you taught him with 'learn that'
+online on / online off    the internet gate (default OFF)
+weather / weather tomorrow   live sky, keyless Open-Meteo
+look up <topic>           Wikipedia summary
+search the web for <topic>   web answer (falls back to Wikipedia)
 ```
 
 ### The terminal command center — `Shadow` from any folder
@@ -178,7 +183,30 @@ both safe by design:
   want them installed." He won't nag on later boots, and offline boots stay
   silent.
 
-### Skills — teach his new tricks without coding
+### Online mode — the internet, behind a gate
+
+By default Shadow **never touches the internet**. Say **"online on"** and he
+may; **"online off"** slams the gate again. The choice persists in
+settings.json and a fresh install always boots gated.
+
+When ON, all lookups are **keyless and free** — no accounts, no API keys:
+
+- **weather** / **weather tomorrow** — Open-Meteo, real data for your city
+  (`set my city to <name>` to change it)
+- **look up <topic>** — clean Wikipedia summaries via their REST API
+- **search the web for <topic>** — DuckDuckGo's instant-answer API, with an
+  automatic Wikipedia fallback when the web has nothing
+
+### The regression suite
+
+`python tests/run_all.py` locks his core against future changes: wake-word
+vocabulary, the noise gates, skill isolation and injection refusal, the
+update state machine (offer once, never nag), lesson persistence, and the
+online gate defaulting OFF. 21 tests, zero dependencies, safe to run while
+he listens. They already caught one real bug: a fresh install would have
+silently lost every settings write.
+
+### Skills — teach him new tricks without coding
 
 Borrowed from Stanford's **OpenShadow** framework: every command he knows
 used to live deep in his source. Now `skills/*.json` files are drop-in
