@@ -125,6 +125,11 @@ check for updates         update yourself  (pull + restart)
 my skills                 what his skills folder taught him
 my lessons                what you taught him with 'learn that'
 online on / online off    the internet gate (default OFF)
+remind me to ... in 20 min   held thoughts, fired in his voice
+remind me to ... at 7 pm  at a clock time (or tomorrow, if past)
+every day at 9 remind me ...   daily routine
+every hour remind me ...  recurring routine
+my reminders              the list (cancel reminder <word>)
 weather / weather tomorrow   live sky, keyless Open-Meteo
 look up <topic>           Wikipedia summary
 search the web for <topic>   web answer (falls back to Wikipedia)
@@ -196,6 +201,19 @@ When ON, all lookups are **keyless and free** — no accounts, no API keys:
 - **look up <topic>** — clean Wikipedia summaries via their REST API
 - **search the web for <topic>** — DuckDuckGo's instant-answer API, with an
   automatic Wikipedia fallback when the web has nothing
+
+### Reminders & routines — he anticipates
+
+The week-two feature: a background scheduler checks his store every 5
+seconds and **fires reminders in his real voice** — "Sir, a reminder: drink
+water." They persist across restarts (`reminders.json`, gitignored).
+
+- **One-shot**: "remind me to drink water in 20 minutes" / "... in 2 hours"
+  / "remind me to call home at 7 pm" (past times roll to tomorrow)
+- **Recurring**: "every hour remind me to drink water" / "every day at 7
+  remind me to check my timetable" / "every monday at 9 remind me to ..."
+- **Review**: "my reminders" / cancel one with "cancel reminder water"
+- Bare "remind me to X" (no time) is **refused honestly**, never guessed
 
 ### The regression suite
 

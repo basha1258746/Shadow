@@ -29,6 +29,10 @@ last_update.json
 chat_log_export.jsonl
 training/*.log
 
+# Chief's reminders are private
+reminders.json
+
+
 # Re-hear probe evidence
 Shadow_probe.wav
 Shadow_probe.wav

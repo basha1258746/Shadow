@@ -1681,6 +1681,9 @@ def show_help():
         "- 'update yourself' - I pull my latest code and tell you what changed\n"
         "- 'my skills' - what I learned from my drop-in skills folder\n"
         "- 'learn that ...' - teach me a lesson I honor in every reply\n"
+        "- 'remind me to ... in 20 minutes' / 'at 7 pm' - held thoughts\n"
+        "- 'every day at 9 remind me to ...' - recurring routines\n"
+        "- 'my reminders' / 'cancel reminder <word>'\n"
         "- 'my lessons' / 'forget lesson <word>' - review or drop lessons\n"
         "- 'check for updates' - I look without touching anything\n"
         "- 'show settings' - see all my settings\n"
@@ -2502,6 +2505,137 @@ def get_response(text):
             text[len("set my city to "):].strip()
         )
 
+    if text_lower.startswith(
+            "remind me") or text_lower.startswith(
+            "every hour remind") or (
+            text_lower.startswith(
+            "every day at") and "remind" in text_lower) or (
+            text_lower.startswith(
+            "every monday") and "remind" in text_lower) or (
+            text_lower.startswith(
+            "every tuesday") and "remind" in text_lower) or (
+            text_lower.startswith(
+            "every wednesday") and "remind" in text_lower) or (
+            text_lower.startswith(
+            "every thursday") and "remind" in text_lower) or (
+            text_lower.startswith(
+            "every friday") and "remind" in text_lower) or (
+            text_lower.startswith(
+            "every saturday") and "remind" in text_lower) or (
+            text_lower.startswith(
+            "every sunday") and "remind" in text_lower):
+        import reminders
+
+        if text_lower in (
+                "remind me",
+                "remind me to",
+        ):
+            return (
+                "What shall I remind you about, "
+                "sir? For example: 'remind me to "
+                "drink water in 20 minutes', or "
+                "'every day at 7 remind me to "
+                "check my timetable'."
+            )
+
+        parsed = reminders.parse_reminder(
+            text
+        )
+
+        if parsed is None:
+            return (
+                "I could not tell when to remind "
+                "you, sir. Try 'remind me to ... "
+                "in 20 minutes', 'remind me to ... "
+                "at 7 pm', or 'every day at 9 "
+                "remind me to ...'."
+            )
+
+        reminders.add_reminder(parsed)
+
+        recurring = parsed.get("recurring")
+
+        if recurring:
+            kind = recurring.get("kind")
+
+            if kind == "hours":
+                when = "every hour"
+
+            elif kind == "daily":
+                when = (
+                    f"daily at "
+                    f"{parsed.get('hours', 9):02d}:"
+                    f"{parsed.get('minutes', 0):02d}"
+                )
+
+            else:
+                import reminders as r
+
+                when = (
+                    "every "
+                    + r.WEEKDAYS[
+                        recurring.get(
+                            "weekday", 0)
+                    ].title()
+                )
+
+            return (
+                f"Very good, sir. I will remind "
+                f"you to {parsed['task']} "
+                f"{when}."
+            )
+
+        when = parsed["fire_at"][:16]
+
+        return (
+            f"Noted, sir. I will remind you to "
+            f"{parsed['task']} at {when}."
+        )
+
+    if text_lower in (
+        "my reminders",
+        "list reminders",
+        "what are you reminding me",
+    ):
+        import reminders
+
+        return (
+            reminders.list_reminders_text()
+        )
+
+    if text_lower.startswith(
+            "cancel reminder") or (
+            text_lower.startswith(
+            "forget reminder")):
+        import reminders
+
+        keyword = text_lower.split(
+            "reminder", 1
+        )[1].strip()
+
+        if not keyword:
+            return (
+                "Which reminder, sir? Say 'cancel "
+                "reminder' and a word from it. "
+                "'my reminders' lists them."
+            )
+
+        removed = (
+            reminders.cancel_reminder(
+                keyword)
+        )
+
+        if removed:
+            return (
+                f"Cancelled, sir. {removed} "
+                "reminder(s) struck off."
+            )
+
+        return (
+            "No reminder matched that word, "
+            "sir. 'my reminders' lists them."
+        )
+
     if text_lower in ("close document", "clear document", "forget document"):
         return close_document()
 
@@ -3159,6 +3293,39 @@ def main():
             # him from listening.
 
             print("[Shadow] Morning briefing failed:")
+
+            traceback.print_exc()
+
+        # Reminders scheduler: daemon thread,
+        # fires due reminders through his real
+        # speaking machinery. Persistent across
+        # restarts (reminders.json).
+
+        try:
+            import reminders
+
+            def fire_reminder(
+                    task_text, reminder_dict):
+                message = (
+                    f"Sir, a reminder: "
+                    f"{task_text}."
+                )
+
+                print(
+                    f"[Shadow REMINDER] {task_text}"
+                )
+
+                if voice_enabled:
+                    speak(message)
+
+            reminders.start_scheduler(
+                fire_reminder
+            )
+
+        except Exception:
+            print(
+                "[Shadow] Reminders failed to start:"
+            )
 
             traceback.print_exc()
 
