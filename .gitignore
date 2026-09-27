@@ -32,6 +32,12 @@ training/*.log
 # Chief's reminders are private
 reminders.json
 
+# Test scratch files
+# scratch stores live in tests/ and are
+# deleted by the suite; ignore any escapees
+tests/_scratch_*.json
+tests/_s*.json
+
 
 # Re-hear probe evidence
 Shadow_probe.wav
