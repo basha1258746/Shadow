@@ -212,11 +212,18 @@ gates as his voice. It starts quietly at boot, polls every 15 s, and binds
 to **127.0.0.1 only** — it exists on this laptop and nowhere else on the
 network, so no PIN is needed (unlike the phone server, which faces the LAN).
 
+The page is not just a view — it is a control surface: **set reminders**
+(it parses "in 20 minutes" / "at 7 pm" exactly like your voice) and
+**teach lessons** with one click, each row deletable. Dashboard chat
+**streams sentence by sentence** exactly like his voice — but silently;
+when the page is streaming, the page is the output device.
+
 ### Reminders & routines — he anticipates
 
 The week-two feature: a background scheduler checks his store every 5
 seconds and **fires reminders in his real voice** — "Sir, a reminder: drink
-water." They persist across restarts (`reminders.json`, gitignored).
+water." They persist across restarts (`reminders.json`, gitignored). From
+the dashboard you can also set and delete them with one click.
 
 - **One-shot**: "remind me to drink water in 20 minutes" / "... in 2 hours"
   / "remind me to call home at 7 pm" (past times roll to tomorrow)
@@ -307,10 +314,11 @@ His wake word went through four live-tuned layers — each one earned by a real 
 - [x] Phone access over LAN
 - [x] Diagnostics: Shadow.log + Shadow status/log/start/stop
 - [x] Self-updates: Shadow update check / Shadow update, spoken changelog on boot
-- [x] Auto morning briefing on first boot of each day
+- [x] Auto morning briefing on first boot of each day — with tomorrow's
+      weather when the online gate is ON (never opens the gate itself)
 - [x] Drop-in skills system (borrowed from OpenShadow)
-- [x] Localhost dashboard: status, reminders, lessons, skills, live chat
-- [ ] Online mode (web search / weather behind an explicit switch)
+- [x] Localhost dashboard: status, reminders, lessons, skills, streaming chat
+- [x] Online mode (web search / weather behind an explicit switch)
 
 ---
 

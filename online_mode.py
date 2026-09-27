@@ -494,6 +494,61 @@ def web_search_text(topic):
     )
 
 
+def briefing_weather_line():
+    # The morning briefing's weather sentence.
+    # Gate-respecting by contract: when he is
+    # gated or the sky is unreachable, this
+    # returns None and the briefing simply
+    # says nothing about weather - it never
+    # opens the gate by itself.
+
+    if not is_online_enabled():
+        return None
+
+    try:
+        city = settings_store.get_setting(
+            ONLINE_CITY_KEY
+        ) or DEFAULT_CITY
+
+        place = _geocode(city)
+
+        if place is None:
+            return None
+
+        url = (
+            "https://api.open-meteo.com/v1/forecast"
+            f"?latitude={place['lat']}"
+            f"&longitude={place['lon']}"
+            "&daily=temperature_2m_max,"
+            "temperature_2m_min,"
+            "precipitation_probability_max,"
+            "weather_code"
+            "&forecast_days=2"
+        )
+
+        data = _fetch_json(url)
+
+        day = data["daily"]
+
+        code = day["weather_code"][1]
+
+        return (
+            f"The sky over {place['name']} "
+            "tomorrow: "
+            f"{WEATHER_CODES.get(code, 'changing skies')}, "
+            f"between "
+            f"{round(day['temperature_2m_min'][1])} "
+            f"and "
+            f"{round(day['temperature_2m_max'][1])} "
+            "degrees, with a "
+            f"{day['precipitation_probability_max'][1]} "
+            "percent chance of rain."
+        )
+
+    except Exception:
+        return None
+
+
 def set_city_text(new_city):
     new_city = new_city.strip()
 

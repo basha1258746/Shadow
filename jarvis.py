@@ -702,6 +702,57 @@ def build_system_prompt():
 
 # ---------------- CHAT ----------------
 
+# When the dashboard is streaming a reply,
+# chat()'s spoken sentences are diverted here
+# instead of the speakers - the page becomes
+# the output device. Managed by the
+# dashboard_sink context manager below.
+
+_dashboard_sink = None
+
+
+class _SinkGuard:
+    def __init__(self, sink):
+        self.sink = sink
+
+    def __enter__(self):
+        global _dashboard_sink
+
+        self.previous = _dashboard_sink
+
+        _dashboard_sink = self.sink
+
+        return self
+
+    def __exit__(self, *args):
+        global _dashboard_sink
+
+        _dashboard_sink = self.previous
+
+        return False
+
+
+def chat_streaming_to_dashboard(
+        user_text, on_piece):
+    # The dashboard's live chat. Runs the
+    # FULL standard pipeline (get_response:
+    # skills, lessons, gates, tools, brain)
+    # so the page sees exactly what his
+    # voice would do - but while the brain
+    # streams, its spoken sentences are
+    # diverted to the browser via the sink
+    # below instead of the speakers. The
+    # page is the output device; nothing is
+    # spoken aloud. on_piece may never fire
+    # (skills reply instantly); the browser
+    # gets the full reply either way.
+
+    with _SinkGuard(on_piece):
+        reply = get_response(user_text)
+
+    return reply
+
+
 def chat(user_text):
     global reply_already_spoken
 
@@ -724,7 +775,20 @@ def chat(user_text):
     def on_sentence(sentence):
         # Speak each sentence the moment it is
         # generated, instead of waiting for the
-        # full reply.
+        # full reply. While the dashboard is
+        # streaming, sentences go to the page
+        # instead of the speakers.
+
+        if _dashboard_sink is not None:
+            try:
+                _dashboard_sink(sentence)
+
+            except Exception:
+                pass
+
+            spoken_count["value"] += 1
+
+            return
 
         if voice_enabled:
             speak(sentence)
@@ -738,7 +802,20 @@ def chat(user_text):
 
         answer = ask_ollama(messages)
 
-        if voice_enabled and spoken_count["value"] == 0:
+        if _dashboard_sink is not None:
+            # Dashboard mode: the page is the
+            # output device - deliver the whole
+            # answer as one piece, never speak.
+
+            try:
+                _dashboard_sink(answer)
+
+                spoken_count["value"] += 1
+
+            except Exception:
+                pass
+
+        elif voice_enabled and spoken_count["value"] == 0:
             speak(answer)
 
     answer = answer.strip() or "..."
@@ -1285,6 +1362,25 @@ def speak_briefing():
     print("[Shadow TOOL: Reading your briefing aloud...]")
 
     lines = morning_briefing().splitlines()
+
+    # The weather sentence, right after the
+    # greeting. Only speaks when the online
+    # gate is ON - the briefing never opens
+    # the gate by itself, and silently skips
+    # when offline or when the sky is down.
+
+    try:
+        import online_mode
+
+        weather_line = (
+            online_mode.briefing_weather_line()
+        )
+
+        if weather_line:
+            lines.insert(1, weather_line)
+
+    except Exception:
+        pass
 
     spoken_lines = []
 
