@@ -12,12 +12,19 @@ MAX_PROJECT_NOTES = 100
 
 MAX_DOCUMENT_MEMORIES = 50
 
+# Corrections and knowledge chief teaches
+# with 'learn that ...'. Capped so the
+# system prompt cannot grow without end.
+
+MAX_LESSONS = 50
+
 # The in-memory store. Shape:
 # {
 #   "version": 2,
 #   "personal": {"user_name": str, "facts": [entry]},
 #   "projects": {"name": [entry]},
-#   "documents": [entry]
+#   "documents": [entry],
+#   "lessons": [entry]
 # }
 #
 # entry = {"text": str, "added": "YYYY-MM-DD HH:MM", "source": str}
@@ -45,7 +52,8 @@ def _empty_memory():
             "facts": []
         },
         "projects": {},
-        "documents": []
+        "documents": [],
+        "lessons": []
     }
 
 
@@ -119,6 +127,10 @@ def load_memory():
         "documents", []
     )
 
+    memory["lessons"] = stored.get(
+        "lessons", []
+    )
+
     return memory
 
 
@@ -160,6 +172,105 @@ def add_personal_fact(text):
 
 def get_personal_facts():
     return memory["personal"]["facts"]
+
+
+def add_lesson(text):
+    # A lesson is a correction or a piece of
+    # knowledge chief taught him explicitly
+    # ('learn that ...'). Every future reply
+    # sees it in the system prompt.
+
+    lesson = _new_entry(text, source="lesson")
+
+    lessons = memory.setdefault("lessons", [])
+
+    # Re-teaching the same thing moves it to
+    # the top instead of duplicating it.
+
+    lowered = text.strip().lower()
+
+    lessons[:] = [
+        l for l in lessons
+        if l["text"].strip().lower() != lowered
+    ]
+
+    lessons.append(lesson)
+
+    while len(lessons) > MAX_LESSONS:
+        lessons.pop(0)
+
+    save_memory()
+
+    return lesson
+
+
+def get_lessons():
+    return memory.get("lessons", [])
+
+
+def remove_lessons(keyword):
+    keyword = keyword.strip().lower()
+
+    lessons = memory.get("lessons", [])
+
+    kept = []
+    removed = 0
+
+    for lesson in lessons:
+        if keyword in lesson["text"].lower():
+            removed += 1
+
+        else:
+            kept.append(lesson)
+
+    memory["lessons"] = kept
+
+    if removed:
+        save_memory()
+
+    return removed
+
+
+def get_lessons_for_prompt():
+    # Plain strings, newest last, for the
+    # system prompt.
+
+    return [
+        lesson["text"]
+        for lesson in memory.get("lessons", [])
+    ]
+
+
+def lessons_summary_text():
+    lessons = get_lessons()
+
+    if not lessons:
+        return (
+            "You have not taught me any "
+            "lessons yet, sir. Say 'learn "
+            "that ...' and I will remember "
+            "it in every reply."
+        )
+
+    lines = [
+        f"My lessons, sir "
+        f"({len(lessons)} taught):",
+        "",
+    ]
+
+    for lesson in reversed(lessons):
+        lines.append(
+            f"- {lesson['text']} "
+            f"(taught {lesson['added']})"
+        )
+
+    lines.append("")
+    lines.append(
+        "Say 'forget lesson <word>' to "
+        "remove one."
+    )
+
+    return "\n".join(lines)
 
 
 def remove_personal_facts(keyword):

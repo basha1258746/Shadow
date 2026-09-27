@@ -13,6 +13,7 @@ if /i "%~1"=="status" %PY% "C:\Users\us448\Shadow\Shadow.py" status & goto :done
 if /i "%~1"=="log" %PY% "C:\Users\us448\Shadow\Shadow.py" log %~2 & goto :done
 if /i "%~1"=="mic" %PY% "C:\Users\us448\Shadow\Shadow.py" mic %~2 & goto :done
 if /i "%~1"=="skills" %PY% "C:\Users\us448\Shadow\Shadow.py" skills & goto :done
+if /i "%~1"=="train" %PY% "C:\Users\us448\Shadow\Shadow.py" train & goto :done
 if /i "%~1"=="update" %PY% "C:\Users\us448\Shadow\Shadow.py" update %~2 & goto :done
 if /i "%~1"=="start" (
     cscript //nologo "C:\Users\us448\Shadow\start_Shadow_autostart.vbs"
@@ -30,6 +31,7 @@ echo   Shadow log [N]   last N log lines of the current session (default 40)
 echo   Shadow start     wake his now
 echo   Shadow stop      put his to sleep
 echo   Shadow skills    list his drop-in skills
+echo   Shadow train     export chats + training status
 echo   Shadow mic       list microphones he can reach
 echo   Shadow mic N     pin device N as his ear and restart his
 echo   Shadow update    pull his latest code and restart his

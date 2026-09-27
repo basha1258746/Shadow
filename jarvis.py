@@ -178,7 +178,7 @@ from voice_input import (
 set_after_sentence_hook(flush_audio_queue)
 import backup
 
-MODEL = "qwen3:1.7b"
+MODEL = "Shadow"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MEMORY_FILE = "memory.json"
 MAX_HISTORY = 12
@@ -652,7 +652,25 @@ def build_system_prompt():
         prompt += " Things the user asked you to remember:"
 
         for fact in facts:
-            prompt += f" {fact};"
+            # Entries are dicts; only the text
+            # belongs in the prompt.
+
+            prompt += f" {fact['text']};"
+
+    lessons = (
+        memory_manager.get_lessons_for_prompt()
+    )
+
+    if lessons:
+        prompt += (
+            "\n\nLESSONS - things your sir has "
+            "taught you or corrected about you. "
+            "Always honor these, even when they "
+            "conflict with your usual habits:"
+        )
+
+        for lesson in lessons:
+            prompt += f" {lesson};"
 
     if current_document_path:
         prompt += (
@@ -1644,6 +1662,8 @@ def show_help():
         "- 'morning briefing on/off' - auto-briefing on first boot of each day\n"
         "- 'update yourself' - I pull my latest code and tell you what changed\n"
         "- 'my skills' - what I learned from my drop-in skills folder\n"
+        "- 'learn that ...' - teach me a lesson I honor in every reply\n"
+        "- 'my lessons' / 'forget lesson <word>' - review or drop lessons\n"
         "- 'check for updates' - I look without touching anything\n"
         "- 'show settings' - see all my settings\n"
         "- 'semantic on' / 'semantic off' - meaning-based document search\n"
@@ -2104,6 +2124,63 @@ def get_response(text):
         return (
             "I am listening through device "
             f"{info['index']}: {info['name']}."
+        )
+
+    if text_lower.startswith("learn that "):
+        lesson = text[len("learn that "):].strip()
+
+        if not lesson:
+            return (
+                "What should I learn, sir? "
+                "Say 'learn that' followed by "
+                "the lesson."
+            )
+
+        memory_manager.add_lesson(lesson)
+
+        return (
+            "Lesson taken, sir. I will honor "
+            f"'{lesson}' in everything I do "
+            "from now on."
+        )
+
+    if text_lower in (
+        "my lessons",
+        "list lessons",
+        "what have you learned",
+        "what have i taught you",
+    ):
+        return (
+            memory_manager.lessons_summary_text()
+        )
+
+    if text_lower.startswith("forget lesson"):
+        keyword = text_lower[
+            len("forget lesson"):].strip()
+
+        if not keyword:
+            return (
+                "Which lesson should I forget, "
+                "sir? Say 'forget lesson' and a "
+                "word from it."
+            )
+
+        removed = (
+            memory_manager.remove_lessons(
+                keyword
+            )
+        )
+
+        if removed:
+            return (
+                f"Forgotten, sir. {removed} "
+                "lesson(s) removed."
+            )
+
+        return (
+            "No lesson matched that word, "
+            "sir. Say 'my lessons' to review "
+            "them."
         )
 
     if text_lower in (
@@ -2687,6 +2764,81 @@ def main():
             print(
                 voice_input.list_input_devices_text()
             )
+
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "train":
+        # Training command center: export his
+        # real chats for fine-tuning, show the
+        # lessons he has been taught, and
+        # remind sir of the rebuild commands.
+
+        import memory_manager
+
+        memory_manager.load_memory()
+
+        lessons = (
+            memory_manager.get_lessons()
+        )
+
+        print(
+            f"Shadow training status: "
+            f"{len(lessons)} lesson(s) taught, "
+            "custom model 'Shadow' active."
+        )
+        print()
+
+        print("Exporting chat history...")
+
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    os.path.join(
+                        os.path.dirname(
+                            os.path.abspath(__file__)
+                        ),
+                        "training",
+                        "export_chats.py",
+                    ),
+                ],
+                timeout=60,
+                capture_output=True,
+                text=True,
+            )
+
+            print(
+                (result.stdout or result.stderr
+                 or "(no output)").strip()
+            )
+
+        except Exception as export_error:
+            print(
+                f"(export failed: {export_error})"
+            )
+
+        print()
+        print("Ways to train him further:")
+        print(
+            "  1. Voice lessons: say 'learn that ...'"
+        )
+        print(
+            "  2. Persona edits: edit Modelfile, then"
+        )
+        print(
+            "     'ollama create Shadow -f Modelfile'"
+        )
+        print(
+            "     and restart him"
+        )
+        print(
+            "  3. Real fine-tuning (free Colab GPU):"
+        )
+        print(
+            "     training/finetune_colab.ipynb"
+        )
 
         return
 
