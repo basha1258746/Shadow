@@ -113,7 +113,7 @@ def _watch_loop(window_title, summarize, speak_fn, voice_on):
 
         if window is None:
             message = (
-                f"chief, the window '{window_title}' is "
+                f"sir, the window '{window_title}' is "
                 "gone, so I stopped watching it."
             )
 
@@ -160,7 +160,7 @@ def _watch_loop(window_title, summarize, speak_fn, voice_on):
             }
 
             message = (
-                f"chief, something changed in "
+                f"sir, something changed in "
                 f"'{window_title}'. {summary}"
             )
 
@@ -187,7 +187,7 @@ def start_watching(query, summarize, speak_fn, voice_on):
     if window is None:
         return False, (
             f"I cannot find a window called "
-            f"'{query}', chief. Check the exact name "
+            f"'{query}', sir. Check the exact name "
             f"and try again."
         )
 
@@ -217,7 +217,7 @@ def start_watching(query, summarize, speak_fn, voice_on):
     watch_thread.start()
 
     return True, (
-        f"Watching '{title}', chief. I will read it "
+        f"Watching '{title}', sir. I will read it "
         f"every {POLL_SECONDS} seconds and tell you "
         f"when its content changes. Say 'stop "
         f"watching' any time."
@@ -230,7 +230,7 @@ def stop_watching(quiet=False):
     if watch_state["active"] and not quiet:
         return (
             f"Stopped watching "
-            f"'{watch_state['title']}', chief. I saw "
+            f"'{watch_state['title']}', sir. I saw "
             f"{watch_state['changes']} change(s)."
         )
 
@@ -242,7 +242,7 @@ def watch_status_text():
     if not watch_state["active"]:
         return (
             "I am not watching any window right "
-            "now, chief. Start one with: watch "
+            "now, sir. Start one with: watch "
             "<window name>."
         )
 

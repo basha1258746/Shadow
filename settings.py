@@ -88,7 +88,7 @@ def set_setting(key, value):
 
 def get_all_settings_text():
     lines = [
-        "Current Shadow settings, chief:",
+        "Current Shadow settings, sir:",
         ""
     ]
 

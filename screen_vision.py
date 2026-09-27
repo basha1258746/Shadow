@@ -147,7 +147,7 @@ def describe_screen(question=None):
 
     if not screen_text:
         return (
-            "I looked at your screen, chief, but could "
+            "I looked at your screen, sir, but could "
             "not read any text on it. It may be "
             "mostly images or video right now."
         )

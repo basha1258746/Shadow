@@ -7,7 +7,7 @@
             "run": "powershell -NoProfile -Command (Get-CimInstance Win32_Battery).EstimatedChargeRemaining"
         },
         {
-            "say": "percent, chief."
+            "say": "percent, sir."
         }
     ]
 }

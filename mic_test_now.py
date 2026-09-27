@@ -25,21 +25,21 @@ SEGMENT_SECONDS = 4.0
 #
 # The 2026-09-25 diagnosis showed the SST
 # array decodes fine up close but falls
-# apart at chief's normal seat. This study
-# maps HOW her pickup really falls with
-# distance, so we know exactly how far her
+# apart at sir's normal seat. This study
+# maps HOW his pickup really falls with
+# distance, so we know exactly how far him
 # ears reach and when an external mic
 # becomes mandatory.
 #
 #   python mic_test_now.py distance
 #
-# Run it with Shadow STOPPED - she holds the
+# Run it with Shadow STOPPED - he holds the
 # microphone exclusively and a live test
 # would find the device already in use.
 
 DISTANCES = (
     (0.3, "30 cm (leaning at the hinge)"),
-    (0.6, "60 cm (right in front of her)"),
+    (0.6, "60 cm (right in front of him)"),
     (1.0, "1 m (edge of the desk)"),
     (1.5, "1.5 m (normal chair distance)"),
     (2.5, "2.5 m (across the room)"),
@@ -52,9 +52,9 @@ NOISE_SECONDS = 2.0
 SPEAK_LINE = "Shadow, what time is it"
 
 
-# Verdict bands, calibrated against her
-# live gates: RMS 2000 is where she calls
-# the room "loud", 3000 is her auto-gain
+# Verdict bands, calibrated against him
+# live gates: RMS 2000 is where he calls
+# the room "loud", 3000 is his auto-gain
 # target for comfortable speech.
 
 def classify_distance(speech_rms, noise_rms, words):
@@ -142,7 +142,7 @@ def _capture_seconds(
 
 
 def _pick_study_device():
-    # Choose her most likely ear: known-good
+    # Choose his most likely ear: known-good
     # device indexes on this laptop first,
     # then the Windows default. The winner
     # must actually open mono @ 48 kHz.
@@ -277,7 +277,7 @@ def run_distance_study():
 
     print()
     print("=" * 55)
-    print("SUMMARY - her real pickup map")
+    print("SUMMARY - his real pickup map")
     print("=" * 55)
     print(
         f"{'distance':<28}{'speech':>7}{'noise':>7}"
@@ -315,7 +315,7 @@ def run_distance_study():
         print(
             f"Note: room noise hit RMS "
             f"{loudest_noise:.0f} - that is loud "
-            "even for her. Retest somewhere "
+            "even for him. Retest somewhere "
             "quieter if results look odd."
         )
 
@@ -323,14 +323,14 @@ def run_distance_study():
 
     if comfort:
         print(
-            f"Her ears are COMFORTABLE up to "
+            f"his ears are COMFORTABLE up to "
             f"{max(comfort):.1f} m. Sit inside "
-            "that and she hears you."
+            "that and he hears you."
         )
 
     elif any_usable:
         print(
-            "No true comfort zone - at best she "
+            "No true comfort zone - at best he "
             f"manages {max(any_usable):.1f} m, "
             "with missed words likely. An "
             "external mic is recommended."
@@ -338,7 +338,7 @@ def run_distance_study():
 
     else:
         print(
-            "She could not reliably hear you at "
+            "He could not reliably hear you at "
             "ANY distance today. The built-in "
             "array has hit its physical limit - "
             "an external mic is now mandatory."
@@ -347,7 +347,7 @@ def run_distance_study():
     print()
     print(
         "Wire the winner in with 'Shadow mic' - "
-        "she pins the best device by name and "
+        "he pins the best device by name and "
         "re-tests automatically on boot."
     )
 
@@ -468,7 +468,7 @@ def main():
         print("  python mic_test_now.py distance")
         print("      RMS vs distance pickup study")
         print()
-        print("Stop Shadow first - she holds the mic.")
+        print("Stop Shadow first - he holds the mic.")
         return
 
     # Default: the rate-matrix sweep. Auto-pick

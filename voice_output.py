@@ -12,7 +12,7 @@ try:
 except ImportError:
     pyttsx3 = None
 
-# ---------------- THE VOICE OF ZOYA ----------------
+# ---------------- THE VOICE OF Shadow ----------------
 #
 # Primary: Piper neural TTS with the warm "Amy"
 # voice - vastly more natural than the robotic
@@ -31,13 +31,43 @@ MAX_SPEECH_RATE = 280
 
 PIPER_DIR = "piper_voices"
 
-PIPER_MODEL = os.path.join(
-    PIPER_DIR,
+# Shadow deserves a male British voice.
+# These are tried in order; the first one
+# present on disk wins. en_GB-alan is the
+# classic RP butler. If none of the male
+# voices are downloaded yet, he still speaks
+# through Amy rather than going mute - drop
+# a model into piper_voices/ and he upgrades
+# himself on the next boot.
+
+PIPER_VOICE_CANDIDATES = (
+    "en_GB-alan-medium.onnx",
+    "en_GB-northern_english_male-medium.onnx",
+    "en_US-ryan-high.onnx",
     "en_US-amy-medium.onnx",
 )
 
+PIPER_MODEL = None
+
+for _candidate in PIPER_VOICE_CANDIDATES:
+    _path = os.path.join(
+        PIPER_DIR,
+        _candidate,
+    )
+
+    if os.path.exists(_path):
+        PIPER_MODEL = _path
+
+        break
+
+if PIPER_MODEL is None:
+    PIPER_MODEL = os.path.join(
+        PIPER_DIR,
+        PIPER_VOICE_CANDIDATES[0],
+    )
+
 # Piper speed control: length_scale is how much
-# LONGER than normal she stretches sounds, so a
+# LONGER than normal he stretches sounds, so a
 # faster speech rate means a SMALLER length
 # scale. 170 wpm (the default) maps to 1.0.
 
@@ -106,9 +136,13 @@ def _get_piper_voice():
     if _piper_voice is None:
         from piper import PiperVoice
 
+        voice_name = os.path.basename(
+            PIPER_MODEL
+        ).replace(".onnx", "")
+
         print(
-            "[ZOYA VOICE] Loading the Piper neural "
-            "voice (Amy)..."
+            "[Shadow VOICE] Loading the Piper "
+            f"neural voice ({voice_name})..."
         )
 
         _piper_voice = PiperVoice.load(
@@ -169,7 +203,7 @@ def _synthesize_to_wav(text):
 
     except Exception as error:
         print(
-            f"[ZOYA VOICE] Piper synthesis failed: "
+            f"[Shadow VOICE] Piper synthesis failed: "
             f"{error} - falling back."
         )
 
@@ -253,13 +287,13 @@ def voice_worker_loop():
             voice_ready = True
 
             print(
-                "[ZOYA VOICE] Neural voice ready "
+                "[Shadow VOICE] Neural voice ready "
                 "(Piper/Amy)."
             )
 
         except Exception as error:
             print(
-                f"[ZOYA VOICE] Piper failed to load: "
+                f"[Shadow VOICE] Piper failed to load: "
                 f"{error} - using Windows voice."
             )
 
@@ -269,7 +303,7 @@ def voice_worker_loop():
 
         if pyttsx3 is None:
             print(
-                "[ZOYA VOICE] No speech engine "
+                "[Shadow VOICE] No speech engine "
                 "available."
             )
 
@@ -283,13 +317,13 @@ def voice_worker_loop():
             voice_ready = True
 
             print(
-                "[ZOYA VOICE] Windows voice ready "
+                "[Shadow VOICE] Windows voice ready "
                 "(Zira)."
             )
 
         except Exception as error:
             print(
-                f"[ZOYA VOICE] Could not start voice: "
+                f"[Shadow VOICE] Could not start voice: "
                 f"{error}"
             )
 
@@ -337,12 +371,12 @@ def voice_worker_loop():
 
             except Exception as error:
                 print(
-                    f"[ZOYA VOICE] Speak failed: {error}"
+                    f"[Shadow VOICE] Speak failed: {error}"
                 )
 
         # Give the audio output a moment to fully
         # finish, then drop whatever the microphone
-        # captured of her own voice.
+        # captured of his own voice.
 
         time.sleep(0.4)
 
@@ -352,7 +386,7 @@ def voice_worker_loop():
 
             except Exception as error:
                 print(
-                    f"[ZOYA VOICE] Self-voice guard "
+                    f"[Shadow VOICE] Self-voice guard "
                     f"failed: {error}"
                 )
 
@@ -526,9 +560,9 @@ def stop_speech():
 
 def play_ear_cone():
     # Subtle two-tone chime for a very specific
-    # moment: she caught her name but no command
-    # came through. Chief hears it and knows to
-    # retry - instead of her silently going back
+    # moment: he caught his names but no command
+    # came through. Sir hears it and knows to
+    # retry - instead of him silently going back
     # to listening. Short, soft, generated on
     # the fly: no sound files needed.
 
@@ -541,7 +575,7 @@ def play_ear_cone():
 
         winsound.Beep(1760, 110)
 
-        print("[ZOYA VOICE] Ear-cone chime (no command after the wake word).")
+        print("[Shadow VOICE] Ear-cone chime (no command after the wake word).")
 
     except Exception:
         # No chime is ever worth crashing over.
@@ -589,7 +623,7 @@ def get_speech_rate():
 
 
 if __name__ == "__main__":
-    print("ZOYA VOICE OUTPUT TEST")
+    print("Shadow VOICE OUTPUT TEST")
 
     if setup_voice():
         print(
@@ -597,7 +631,7 @@ if __name__ == "__main__":
         )
 
         speak(
-            "Hello chief. I am Shadow, your personal "
+            "Hello sir. I am Shadow, your personal "
             "AI companion. Do you like my new voice?"
         )
 
@@ -609,7 +643,7 @@ if __name__ == "__main__":
 
         speak(
             "I can also speak faster when you are "
-            "in a hurry, chief."
+            "in a hurry, sir."
         )
 
         wait_until_speech_done()

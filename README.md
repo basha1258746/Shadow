@@ -1,18 +1,18 @@
-# Shadow 💜 (formerly Shadow)
+# Shadow 💙
 
-A **local-first AI companion** for Windows — she hears you, talks with you, sees your screen, reads your documents, remembers you, controls your PC *with permission*, and answers your phone. Everything runs **on your laptop**. No cloud, no API keys, no subscriptions.
+A **local-first AI companion** for Windows — he hears you, talks with you, sees your screen, reads your documents, remembers you, controls your PC *with permission*, and answers your phone. Everything runs **on your laptop**. No cloud, no API keys, no subscriptions.
 
 > Built for one 8 GB laptop (Intel i3-1315U, Windows 10) — proof that a real assistant doesn't need a datacenter.
 
 ---
 
-## ✨ What she can do
+## ✨ What he can do
 
 | Ability | How to use it |
 |---|---|
-| 🧠 **Local brain** | Just talk to her — Qwen3 (1.7B) via Ollama, fully offline |
+| 🧠 **Local brain** | Just talk to his — Qwen3 (1.7B) via Ollama, fully offline |
 | 🎙 **Hears you** | `voice chat` → say **"Shadow"** → beep → talk. Or skip the beep: **"Shadow what time is it"** in one breath (offline Vosk STT + wake grammar) |
-| 🗣 **Talks to you** | Sentence-by-sentence speech while she thinks; `speak faster` / `slower` |
+| 🗣 **Talks to you** | Sentence-by-sentence speech while he thinks; `speak faster` / `slower` |
 | 👁 **Sees your screen** | `what do you see` / `look at my screen and <question>` / GUI 👁 Eyes button |
 | 👀 **Watches a window** | `watch notepad` → announces + summarizes content changes |
 | 🖱 **Controls the PC** | `click`, `scroll down 5`, `type hello`, `press enter` — **always asks yes/no first** |
@@ -49,9 +49,9 @@ pip install vosk sounddevice numpy pyttsx3 pywin32 Pillow pymupdf pytesseract py
 ```
 curl -L -o vosk-model-en-us-0.22-lgraph.zip https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip
 ```
-Extract the folder next to the code (128 MB, best accuracy-per-megabyte; the tiny 40 MB `vosk-model-small-en-us-0.15` works too — she picks automatically and falls back gracefully).
+Extract the folder next to the code (128 MB, best accuracy-per-megabyte; the tiny 40 MB `vosk-model-small-en-us-0.15` works too — he picks automatically and falls back gracefully).
 
-### 4. Run her
+### 4. Run his
 
 ```
 python Shadow.py          # terminal + voice
@@ -86,7 +86,7 @@ Shadow/
 ├── Shadow.bat             # Terminal command center: status / log / start / stop
 ├── mic_test_now.py      # Mic calibration sweep (self-healing helper)
 ├── vision_session.py    # Timed screen-observation diary
-├── memory.json          # Her long-term memory
+├── memory.json          # His long-term memory
 └── settings.json        # Your preferences
 ```
 
@@ -122,7 +122,7 @@ what do you know about me show project x            listen  (one spoken command)
 what do you remember      forget that ...           voice chat  (hands-free mode)
 briefing spoken           Shadow log  (session log)
 check for updates         update yourself  (pull + restart)
-my skills                 what her skills folder taught her
+my skills                 what his skills folder taught his
 ```
 
 ### The terminal command center — `Shadow` from any folder
@@ -132,58 +132,58 @@ my skills                 what her skills folder taught her
 source of truth), so these work from **cmd, PowerShell, anywhere**:
 
 ```
-Shadow status      is she running? brain online? what did she last hear? errors?
-Shadow log [N]     her last N log lines of the current session (default 40)
-Shadow start       wake her now (same as laptop boot)
-Shadow stop        put her to sleep
-Shadow skills      her drop-in skills (and any broken files)
+Shadow status      is he running? brain online? what did he last hear? errors?
+Shadow log [N]     his last N log lines of the current session (default 40)
+Shadow start       wake his now (same as laptop boot)
+Shadow stop        put his to sleep
+Shadow skills      his drop-in skills (and any broken files)
 Shadow update check    just report what is new on GitHub, pull nothing
-Shadow update      pull her latest code and restart her
+Shadow update      pull his latest code and restart his
 Shadow             the command list
 ```
 
 `Shadow status` checks the real autostart process by its command line (quote-free
 PowerShell probe — the `-Filter` variant silently matched nothing), pings
-Ollama, and summarizes the session: what she last heard and any errors.
-The bat prefers her exact Python 3.14 interpreter and falls back to whatever
+Ollama, and summarizes the session: what he last heard and any errors.
+The bat prefers his exact Python 3.14 interpreter and falls back to whatever
 `python` is on PATH.
 
-### Her ears — pick a microphone
+### His ears — pick a microphone
 
-`Shadow mic` / say *"Shadow, list microphones"* — shows every ear she can reach and
+`Shadow mic` / say *"Shadow, list microphones"* — shows every ear he can reach and
 marks the current one. "Shadow, which mic are you using" reports the live stream
 device; "Shadow, use external mic" / "use laptop microphone" hot-swaps without a
-restart, and `Shadow mic N` pins device N. A USB mic in her name-preference list
+restart, and `Shadow mic N` pins device N. A USB mic in his name-preference list
 (yeti, snowball, logitech, webcam, speakerphone, headset…) wins over the
-built-in array on its own the moment it's plugged in — she announces the swap.
+built-in array on its own the moment it's plugged in — he announces the swap.
 Bluetooth hands-free devices never auto-win (narrowband, echo-prone audio);
 pin those by hand: `Shadow mic 29`.
 
-### Self-updates — she upgrades herself
+### Self-updates — he upgrades himself
 
-Shadow watches her own GitHub repo (`basha1258746/Shadow`, private). Two ways in,
+Shadow watches his own GitHub repo (`basha1258746/Shadow`, private). Two ways in,
 both safe by design:
 
 - **`Shadow update check`** (or say *"Shadow, check for updates"*) — fetches and
-  compares only. She reports how many commits are waiting and what they are.
-  Her working tree is **never touched** — this is pure window-shopping.
+  compares only. He reports how many commits are waiting and what they are.
+  His working tree is **never touched** — this is pure window-shopping.
 - **`Shadow update`** (or say *"Shadow, update yourself"*) — pulls with
-  `--ff-only`, refuses on any conflict (chief's uncommitted work is never
-  discarded), restarts her, and she **speaks the changelog on boot**: "I
-  upgraded myself while you were away, chief. New: …" — announced once, never
+  `--ff-only`, refuses on any conflict (sir's uncommitted work is never
+  discarded), restarts his, and he **speaks the changelog on boot**: "I
+  upgraded myself while you were away, sir. New: …" — announced once, never
   repeated.
-- **Every boot she checks quietly** (fetch + compare, still no pulling) and —
+- **Every boot he checks quietly** (fetch + compare, still no pulling) and —
   next to the morning briefing — mentions new commits **once per release**:
-  "Chief, 2 new updates are waiting on GitHub: … Say 'update yourself' when you
-  want them installed." She won't nag on later boots, and offline boots stay
+  "Sir, 2 new updates are waiting on GitHub: … Say 'update yourself' when you
+  want them installed." He won't nag on later boots, and offline boots stay
   silent.
 
-### Skills — teach her new tricks without coding
+### Skills — teach his new tricks without coding
 
-Borrowed from Stanford's **OpenShadow** framework: every command she knows
-used to live deep in her source. Now `skills/*.json` files are drop-in
-lessons — she re-reads the folder on **every request**, so a new file works
-on her very next listen, no restart.
+Borrowed from Stanford's **OpenShadow** framework: every command he knows
+used to live deep in his source. Now `skills/*.json` files are drop-in
+lessons — he re-reads the folder on **every request**, so a new file works
+on his very next listen, no restart.
 
 ```json
 {
@@ -192,7 +192,7 @@ on her very next listen, no restart.
     "match": ["battery", "battery status"],
     "steps": [
         { "run": "powershell -NoProfile -Command (Get-CimInstance Win32_Battery).EstimatedChargeRemaining" },
-        { "say": "percent, chief." }
+        { "say": "percent, sir." }
     ]
 }
 ```
@@ -200,43 +200,43 @@ on her very next listen, no restart.
 - `match` — phrases that trigger it (exact or as a sentence prefix)
 - `steps` — in order: `run` a command (output is spoken), `say` fixed text;
   mix freely, max 12 steps
-- Say **"my skills"** (or `Shadow skills`) to list what she learned — broken
+- Say **"my skills"** (or `Shadow skills`) to list what he learned — broken
   files are reported honestly, never silently ignored
 
 Built-ins ship as examples: `battery`, `wifi`, and a `college timetable`
-skill chief can edit with his real class schedule. `run` is deliberately
+skill sir can edit with his real class schedule. `run` is deliberately
 sandboxed: single simple commands only — no quotes, pipes, or redirection —
-so her voice can never become a shell injection.
+so his voice can never become a shell injection.
 
 ---
 
 ## 🔧 The microphone war stories
 
-This laptop's SST microphone array taught us everything the hard way — if her ears misbehave on *your* hardware, these are the lessons baked into the code:
+This laptop's SST microphone array taught us everything the hard way — if his ears misbehave on *your* hardware, these are the lessons baked into the code:
 
-- **Warm-up dead zone** — the first ~12 s of any session capture loud-but-garbled audio; she warms up at startup so her *first* listen works
+- **Warm-up dead zone** — the first ~12 s of any session capture loud-but-garbled audio; he warms up at startup so his *first* listen works
 - **Never re-open a settled stream** — reopening resets the dead zone; healthy streams are reused and rebuilt only on failure
 - **Open the mic natively (1 ch @ 48 kHz)** — the driver mixes the array cleanly; manual multi-channel downmix folds ultrasonic garbage into the speech band
-- **Self-healing retries** — a dead stream triggers one rebuild + re-warm; a *healthy* stream is never rebuilt (each rebuild costs ~12 s of deafness — that trap once made her miss the wake word one time in three)
-- **`python mic_test_now.py`** — count out loud for ~40 s; she tests every mic config and re-picks her best ear automatically
+- **Self-healing retries** — a dead stream triggers one rebuild + re-warm; a *healthy* stream is never rebuilt (each rebuild costs ~12 s of deafness — that trap once made his miss the wake word one time in three)
+- **`python mic_test_now.py`** — count out loud for ~40 s; he tests every mic config and re-picks his best ear automatically
 
 ---
 
-## 👂 Ear architecture (how she listens)
+## 👂 Ear architecture (how he listens)
 
-Her wake word went through four live-tuned layers — each one earned by a real failure in `Shadow.log`:
+His wake word went through four live-tuned layers — each one earned by a real failure in `Shadow.log`:
 
-1. **Name-only wake grammar** — the wake recognizer is restricted to a tiny vocabulary: her names, soundalikes (zoe, sonya, joya…), and `[unk]`. Vosk's full language model kept winning "Shadow" over words like *the*; with the grammar, the name is one of the only legal outputs and wins every time. TV chatter bounces off as `[unk]`.
-2. **One-breath commands** — a rolling 6-second audio buffer rides along. When the grammar catches her name, she waits for the phrase to end (~1.5 s of quiet), then **re-hears the buffer with the full vocabulary** and pulls out the command. "Shadow what time is it" → direct answer, no beep. Name alone → the beep flow.
-3. **Second-chance net** — every 5 s (and at window end) when the room was loud but the grammar matched nothing, she re-hears the full buffer and looks for her name there. Fast, loud attempts that mangle in the grammar get recovered.
-4. **Bare-address rescue** — when her name's syllables arrive degraded (distance, TV), the grammar emits exactly `hey`, `[unk] hey`, `yo hey`. If that happens while the room is genuinely loud, she assumes it's you starting a phrase and waits for the command. TV says "hey" too — but far quieter, so a loudness gate (RMS > 2000) keeps it out.
+1. **Name-only wake grammar** — the wake recognizer is restricted to a tiny vocabulary: his names, soundalikes (zoe, sonya, joya…), and `[unk]`. Vosk's full language model kept winning "Shadow" over words like *the*; with the grammar, the name is one of the only legal outputs and wins every time. TV chatter bounces off as `[unk]`.
+2. **One-breath commands** — a rolling 6-second audio buffer rides along. When the grammar catches his name, he waits for the phrase to end (~1.5 s of quiet), then **re-hears the buffer with the full vocabulary** and pulls out the command. "Shadow what time is it" → direct answer, no beep. Name alone → the beep flow.
+3. **Second-chance net** — every 5 s (and at window end) when the room was loud but the grammar matched nothing, he re-hears the full buffer and looks for his name there. Fast, loud attempts that mangle in the grammar get recovered.
+4. **Bare-address rescue** — when his name's syllables arrive degraded (distance, TV), the grammar emits exactly `hey`, `[unk] hey`, `yo hey`. If that happens while the room is genuinely loud, he assumes it's you starting a phrase and waits for the command. TV says "hey" too — but far quieter, so a loudness gate (RMS > 2000) keeps it out.
 
 **Noise gates, both directions:**
 
-- *Before waking:* leading/trailing filler tokens (`the`, `a`, `[unk]`, `hey`, `ok`…) are stripped from anything after her name; pure filler means "name only" → beep, never a garbage command to the brain
+- *Before waking:* leading/trailing filler tokens (`the`, `a`, `[unk]`, `hey`, `ok`…) are stripped from anything after his name; pure filler means "name only" → beep, never a garbage command to the brain
 - *After the beep:* a lone function word (`this`, `the`, `it`…) is treated as silence → the subtle **ear-cone chime** tells you to retry, instead of the brain answering fluff. Middle words are never touched — "what **the** time is it" survives
 
-**Diagnostics:** everything she prints, hears, or crashes on lands in `Shadow.log` (gitignored) — even under `pythonw` with no console. `Shadow status` summarizes it; `Shadow log` reads it raw.
+**Diagnostics:** everything he prints, hears, or crashes on lands in `Shadow.log` (gitignored) — even under `pythonw` with no console. `Shadow status` summarizes it; `Shadow log` reads it raw.
 
 ---
 
@@ -260,7 +260,7 @@ Her wake word went through four live-tuned layers — each one earned by a real 
 ## 📜 Notes
 
 - Built iteratively with an AI coding agent — every commit is a real feature or a real bug hunt
-- She is honest about being an AI: warm, playful — but no pretending to be human
-- Repo name stays **Shadow** for history; she answers to Shadow (and still answers to "Shadow" 💙)
+- He is honest about being an AI: a refined butler with dry wit — no pretending to be human
+- Named for the Shadow of the Iron Man films
 
-*Made with patience, one microphone bug at a time. Say "Shadow" — she's listening (and if the room eats her name, she'll chime).*
+*Made with patience, one microphone bug at a time. Say "Shadow" — he's listening (and if the room eats his name, he'll chime).*

@@ -22,7 +22,7 @@ STOP_WORDS = {
     "of", "with", "by", "from", "is", "are", "was", "were", "be", "been",
     "being", "have", "has", "had", "do", "does", "did", "will", "would",
     "could", "should", "may", "might", "must", "can", "this", "that",
-    "these", "those", "i", "you", "he", "she", "it", "we", "they",
+    "these", "those", "i", "you", "he", "he", "it", "we", "they",
     "what", "which", "who", "when", "where", "why", "how"
 }
 

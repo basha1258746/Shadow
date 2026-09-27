@@ -7,14 +7,14 @@ REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(REPO_DIR, "last_update.json")
 
 # Keep this many commit subjects in the state:
-# enough for her to summarize the last update
+# enough for him to summarize the last update
 # without ever dumping a wall of text.
 
 MAX_CHANGES = 8
 
 
 def _git(*args):
-    # Run a git command inside her repo and
+    # Run a git command inside his repo and
     # return cleaned stdout. Raises with the
     # git error message on failure.
 
@@ -59,8 +59,8 @@ def _save_state(state):
 
 def _clean_subjects(lines):
     # Commit subjects minus common noise, and
-    # never more than MAX_CHANGES: she speaks
-    # the summary, she does not recite git.
+    # never more than MAX_CHANGES: he speaks
+    # the summary, he does not recite git.
 
     cleaned = []
 
@@ -101,7 +101,7 @@ def check_for_updates():
 def pull_updates():
     # The actual self-update: stash nothing,
     # refuse anything risky, and prefer a
-    # clean fast-forward. Refuses when chief
+    # clean fast-forward. Refuses when sir
     # has uncommitted changes that would
     # collide (his work is never discarded).
     # Returns (updated: bool, subjects, note).
@@ -137,7 +137,7 @@ def pull_updates():
             False,
             [],
             "update blocked - local changes would "
-            "conflict; chief must commit or stash "
+            "conflict; sir must commit or stash "
             "them first",
         )
 
@@ -155,7 +155,7 @@ def pull_updates():
 def get_boot_update_news():
     # The boot check: compare against origin
     # without pulling. Announce-once per
-    # release, per chief's request - say it
+    # release, per sir's request - say it
     # with the morning briefing, not every
     # boot. Returns (behind, subjects).
 
@@ -166,7 +166,7 @@ def get_boot_update_news():
 
     except Exception:
         # No internet / no GitHub: stay quiet,
-        # chief never hears a boot error.
+        # sir never hears a boot error.
 
         return 0, []
 
@@ -191,7 +191,7 @@ def get_boot_update_news():
             state.get("last_fingerprint") == (
                 fingerprint)):
         # Same pile as last boot: already
-        # offered, chief declined - hush.
+        # offered, sir declined - hush.
 
         return 0, []
 
@@ -210,7 +210,7 @@ def get_pending_announcement():
     # The announcement flag: after a pull (or a
     # restart that landed new code), the NEXT
     # wake reads this once and clears it, so
-    # she never repeats herself.
+    # he never repeats himself.
 
     state = _load_state()
 

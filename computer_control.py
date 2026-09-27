@@ -264,7 +264,7 @@ def execute_action(action):
 
     if not PYAUTOGUI_AVAILABLE:
         return (
-            "pyautogui is not installed, chief, so I "
+            "pyautogui is not installed, sir, so I "
             "cannot control the computer."
         )
 
@@ -342,7 +342,7 @@ def execute_action(action):
 
     except pyautogui.FailSafeException:
         return (
-            "EMERGENCY STOP, chief! The mouse hit "
+            "EMERGENCY STOP, sir! The mouse hit "
             "the screen corner, so I cancelled "
             "everything immediately. Nothing "
             "further was done."

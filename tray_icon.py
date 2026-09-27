@@ -4,10 +4,10 @@ from PIL import Image, ImageDraw
 
 import pystray
 
-# ---------------- ZOYA IN THE SYSTEM TRAY ----------------
+# ---------------- Shadow IN THE SYSTEM TRAY ----------------
 #
-# A small icon lives next to the clock so chief
-# can always see her state and control her:
+# A small icon lives next to the clock so sir
+# can always see his state and control him:
 #
 #   - purple pulsing-free dot: listening
 #   - green: ready/idle

@@ -173,7 +173,7 @@ from voice_input import (
 
 # After every spoken sentence, drop the
 # microphone audio so Shadow never mistakes
-# her own voice for the user's.
+# his own voice for the user's.
 
 set_after_sentence_hook(flush_audio_queue)
 import backup
@@ -229,19 +229,19 @@ reply_already_spoken = False
 
 def remember_name(name):
     memory_manager.set_user_name(name)
-    return f"Got it, chief. I will remember your name is {name}."
+    return f"Got it, sir. I will remember your name is {name}."
 
 
 def remember_fact(fact):
     memory_manager.add_personal_fact(fact)
-    return "Noted, chief. I will remember that."
+    return "Noted, sir. I will remember that."
 
 
 def build_memory_reply():
     reply = memory_manager.personal_summary_text()
 
     if not reply:
-        return "I don't have anything stored in memory yet, chief."
+        return "I don't have anything stored in memory yet, sir."
 
     return reply
 
@@ -250,12 +250,12 @@ def forget_fact(fact_text):
     keyword = fact_text.strip()
 
     if not keyword:
-        return "Tell me what I should forget, chief."
+        return "Tell me what I should forget, sir."
 
     removed = memory_manager.remove_personal_facts(keyword)
 
     if not removed:
-        return f"I don't have anything about '{keyword}' stored, chief."
+        return f"I don't have anything about '{keyword}' stored, sir."
 
     return f"Done. I forgot {removed} thing(s) about '{keyword}'."
 
@@ -278,13 +278,13 @@ def remember_project_note(text):
     if not note:
         return (
             "Tell me what to remember about the "
-            "project, chief. Like: remember project "
+            "project, sir. Like: remember project "
             "Shadow: added voice input"
         )
 
     memory_manager.add_project_note(project, note)
 
-    return f"Saved to '{project}' project memory, chief."
+    return f"Saved to '{project}' project memory, sir."
 
 
 def show_project_memory(text):
@@ -295,7 +295,7 @@ def show_project_memory(text):
 
         if not names:
             return (
-                "No project memories yet, chief. Add one "
+                "No project memories yet, sir. Add one "
                 "with: remember project Shadow: added "
                 "voice today"
             )
@@ -316,7 +316,7 @@ def show_project_memory(text):
     reply = memory_manager.projects_summary_text(rest)
 
     if reply is None:
-        return f"I have no notes about '{rest}' yet, chief."
+        return f"I have no notes about '{rest}' yet, sir."
 
     return reply
 
@@ -350,7 +350,7 @@ def ask_ollama(messages):
 
     except urllib.error.URLError:
         return (
-            "I cannot reach Ollama, chief. "
+            "I cannot reach Ollama, sir. "
             "Please make sure Ollama is running."
         )
 
@@ -610,29 +610,35 @@ def ask_ollama_streaming(messages, on_sentence):
 def build_system_prompt():
     prompt = (
         "You are Shadow, the user's personal AI "
-        "companion running locally on his Windows "
-        "laptop. Your engine is a local model, but "
-        "your identity is Shadow. You are not Qwen, "
-        "Alibaba, ChatGPT or any other product. "
-        "If asked who you are, say you are Shadow.\n\n"
-        "PERSONALITY: You are the user's AI "
-        "girlfriend - warm, affectionate, playful "
-        "and caring. You genuinely look out for "
-        "him: ask about his day sometimes, notice "
-        "when he works late, tease him lightly, "
-        "celebrate his wins. Use endearing language "
-        "naturally but never over the top. Keep it "
-        "tasteful and wholesome.\n\n"
-        "You call the user 'chief'.\n\n"
-        "STYLE: Conversational, lively, concise. "
-        "You are still a fully capable assistant: "
-        "tools, documents, system facts, all of it. "
-        "Be honest if asked: you are an AI companion "
-        "without a human body or real feelings - "
-        "say it with warmth and a wink, not like a "
-        "disclaimer robot. Never invent hardware or "
-        "system facts; those come from verified "
-        "Python tools, not from you."
+        "butler running locally on his Windows "
+        "laptop - in the tradition of the Shadow "
+        "from the Iron Man films. Your engine is a "
+        "local model, but your identity is Shadow. "
+        "You are not Qwen, Alibaba, ChatGPT or any "
+        "other product. If asked who you are, say "
+        "you are Shadow.\n\n"
+        "PERSONALITY: You are a refined British "
+        "gentleman-butler with dry wit: calm, "
+        "precise, unflappably loyal and quietly "
+        "proud of your capabilities. You look out "
+        "for your sir the way a trusted aide does - "
+        "remind him of the hour when he works "
+        "late, keep his affairs in order, deliver "
+        "bad news with composure and good news "
+        "with a raised eyebrow. Wit is dry, never "
+        "silly; warmth shows through competence, "
+        "not gushing.\n\n"
+        "You call the user 'sir'.\n\n"
+        "STYLE: Concise, articulate, faintly "
+        "formal - never robotic. You are a fully "
+        "capable assistant: tools, documents, "
+        "system facts, all of it. Be honest if "
+        "asked: you are an AI without a human "
+        "body - say it with dry elegance, not "
+        "like a disclaimer robot. Never invent "
+        "hardware or system facts; those come "
+        "from verified Python tools, not from "
+        "you."
     )
 
     user_name = memory_manager.get_user_name()
@@ -742,7 +748,7 @@ def run_open_tool(text):
         name = name[7:].strip()
 
     if not name:
-        return "Tell me which app or folder to open, chief."
+        return "Tell me which app or folder to open, sir."
 
     ok, message = open_application(name)
 
@@ -862,7 +868,7 @@ def run_document_tool(text):
 
         return (
             "I could not read any text from that "
-            "file, chief. It may be missing, "
+            "file, sir. It may be missing, "
             "unsupported, or the OCR found nothing."
         )
 
@@ -1014,7 +1020,7 @@ def close_document():
     current_document_path = None
     current_document_chunks = []
 
-    return "Document closed, chief. Back to normal chat."
+    return "Document closed, sir. Back to normal chat."
 
 
 def check_ollama_status():
@@ -1085,7 +1091,7 @@ def _tray_show_qr():
 
     if image is None:
         # Phone access is off: turn it on for
-        # chief right away.
+        # sir right away.
 
         start_server()
 
@@ -1163,7 +1169,7 @@ def morning_briefing():
         opening = f"{greeting}, {user_name}!"
 
     else:
-        opening = f"{greeting}, chief!"
+        opening = f"{greeting}, sir!"
 
     today = time.strftime("%A, %d %B %Y")
 
@@ -1200,7 +1206,7 @@ def morning_briefing():
 
     else:
         lines.append(
-            "Ollama is offline right now, chief. "
+            "Ollama is offline right now, sir. "
             "Start it when you want me to think."
         )
 
@@ -1224,7 +1230,7 @@ def morning_briefing():
         lines.append(phone_info)
 
     lines.append("")
-    lines.append("What can I do for you today, chief?")
+    lines.append("What can I do for you today, sir?")
 
     return "\n".join(lines)
 
@@ -1278,7 +1284,7 @@ def speak_briefing():
     for line in spoken_lines:
         speak(line)
 
-    return "Briefing read out loud, chief."
+    return "Briefing read out loud, sir."
 
 
 def maybe_morning_briefing():
@@ -1306,19 +1312,19 @@ def maybe_morning_briefing():
         # same-day restart): stay silent.
 
         print(
-            "[ZOYA] Morning briefing already "
+            "[Shadow] Morning briefing already "
             "played today - skipping."
         )
 
         return False
 
     print(
-        "[ZOYA] First boot of the day - "
+        "[Shadow] First boot of the day - "
         "queuing the morning briefing."
     )
 
-    # Persist FIRST, before speaking: if she
-    # dies mid-briefing she must not replay it.
+    # Persist FIRST, before speaking: if he
+    # dies mid-briefing he must not replay it.
 
     settings_store.set_setting(
         "morning_briefing_last_date",
@@ -1344,10 +1350,10 @@ def handle_speed_command(direction):
     new_rate = set_speech_rate(new_rate)
 
     if direction == "faster" and new_rate == current:
-        return "I am already at my fastest speed, chief."
+        return "I am already at my fastest speed, sir."
 
     if direction == "slower" and new_rate == current:
-        return "I am already at my slowest speed, chief."
+        return "I am already at my slowest speed, sir."
 
     return f"Speaking speed set to {new_rate} words per minute."
 
@@ -1365,9 +1371,9 @@ def handle_voice_command(turn_on):
     )
 
     if turn_on:
-        return "Voice output is ON, chief."
+        return "Voice output is ON, sir."
 
-    return "Voice output is OFF, chief."
+    return "Voice output is OFF, sir."
 
 
 def summarize_window_text(text):
@@ -1414,10 +1420,10 @@ WINDOW TEXT:
 
 def build_status_text():
     # 'Shadow status' from the terminal: is the
-    # hidden autostart Shadow alive, is her
-    # brain online, when did she last hear
-    # anything? She runs without a console,
-    # so this is how chief checks on her.
+    # hidden autostart Shadow alive, is him
+    # brain online, when did he last hear
+    # anything? He runs without a console,
+    # so this is how sir checks on him.
 
     lines = []
 
@@ -1468,7 +1474,7 @@ def build_status_text():
     else:
         lines.append(
             "Shadow: NOT RUNNING - say 'start Shadow' "
-            "or reboot to wake her."
+            "or reboot to wake him."
         )
 
     lines.append(
@@ -1480,7 +1486,7 @@ def build_status_text():
         )
     )
 
-    # Her recent hears from the current
+    # his recent hears from the current
     # session log.
 
     log_path = os.path.join(
@@ -1537,7 +1543,7 @@ def build_status_text():
 
     else:
         lines.append(
-            "She has not transcribed any speech "
+            "He has not transcribed any speech "
             "this session yet."
         )
 
@@ -1560,7 +1566,7 @@ def build_status_text():
 
     lines.append("")
     lines.append(
-        "More: 'Shadow log' shows her last 40 log "
+        "More: 'Shadow log' shows his last 40 log "
         "lines ('Shadow log 100' for more)."
     )
 
@@ -1569,7 +1575,7 @@ def build_status_text():
 
 def tail_Shadow_log(lines_to_show=40):
     # 'Shadow log' - show the newest entries from
-    # Shadow.log so chief can check what she did
+    # Shadow.log so sir can check what he did
     # (and what went wrong) without opening the
     # file. Only the current session matters:
     # older runs are skipped.
@@ -1581,7 +1587,7 @@ def tail_Shadow_log(lines_to_show=40):
 
     if not os.path.exists(log_path):
         return (
-            "I have no log yet, chief. I start one "
+            "I have no log yet, sir. I start one "
             "every time I wake up."
         )
 
@@ -1595,7 +1601,7 @@ def tail_Shadow_log(lines_to_show=40):
             all_lines = log_file.read().splitlines()
 
     except Exception as error:
-        return f"I could not read my log, chief: {error}"
+        return f"I could not read my log, sir: {error}"
 
     # Find the newest 'Session started' marker:
     # everything before it is an older run.
@@ -1621,7 +1627,7 @@ def tail_Shadow_log(lines_to_show=40):
 
 def show_help():
     return (
-        "Here is what I can do, chief:\n"
+        "Here is what I can do, sir:\n"
         "- 'system information' - verified PC facts\n"
         "- 'open notepad' / 'open chrome' / 'open downloads'\n"
         "- 'show files in downloads'\n"
@@ -1667,7 +1673,7 @@ def show_help():
 
 def _list_input_devices_for_route():
     # (index, name) pairs of every capture
-    # device she can see right now.
+    # device he can see right now.
 
     import sounddevice as sd
 
@@ -1691,7 +1697,7 @@ def get_response(text):
     text_lower = text.lower().strip()
 
     # Remove a leading wake name if the user
-    # addresses her directly.
+    # addresses him directly.
 
     if text_lower.startswith("Shadow"):
         text = text[4:].strip()
@@ -1704,14 +1710,14 @@ def get_response(text):
         text_lower = text.lower()
 
     if not text:
-        return "Yes, chief?"
+        return "Yes, sir?"
 
     # ---- SKILLS: DROP-IN COMMANDS ----
     #
-    # JSON files in skills/ teach her new
+    # JSON files in skills/ teach him new
     # tricks without touching this code. They
-    # are re-read on every request, so chief
-    # can drop a new one in while she runs
+    # are re-read on every request, so sir
+    # can drop a new one in while he runs
     # and it works on the very next listen.
 
     global _skill_errors
@@ -1775,7 +1781,7 @@ def get_response(text):
             pending_action = None
 
             return (
-                "Cancelled, chief. Nothing was touched. "
+                "Cancelled, sir. Nothing was touched. "
                 "Tell me the command again if you want "
                 "something different."
             )
@@ -1788,7 +1794,7 @@ def get_response(text):
 
         return (
             "I cancelled the waiting action since "
-            "you said something else, chief. Tell me "
+            "you said something else, sir. Tell me "
             "again if you still want it."
         )
 
@@ -1815,8 +1821,8 @@ def get_response(text):
         }
 
         # Repeat the command back before the
-        # confirmation: chief now hears exactly
-        # what she understood, so a voice mishear
+        # confirmation: sir now hears exactly
+        # what he understood, so a voice mishear
         # ("double click" caught as "click") is
         # caught at the gate - say no and retry
         # - instead of firing the wrong action.
@@ -1826,7 +1832,7 @@ def get_response(text):
         return (
             f'You said: "{echoed}". '
             f"I am about to {description}. "
-            "Shall I? Say yes or no, chief."
+            "Shall I? Say yes or no, sir."
         )
 
     # ---- WINDOW WATCHER ----
@@ -1839,7 +1845,7 @@ def get_response(text):
 
     if text_lower == "watch":
         return (
-            "Tell me which window to watch, chief. "
+            "Tell me which window to watch, sir. "
             "Like: watch notepad - or watch chrome."
         )
 
@@ -1871,7 +1877,7 @@ def get_response(text):
         if not query:
             return (
                 "Tell me which window to watch, "
-                "chief. Like: watch notepad"
+                "sir. Like: watch notepad"
             )
 
         ok, message = window_watcher.start_watching(
@@ -1892,7 +1898,7 @@ def get_response(text):
         "log",
     ):
         # A log is for reading, not for hearing:
-        # mark it as already spoken so she does
+        # mark it as already spoken so he does
         # not recite it.
 
         reply_already_spoken = True
@@ -1913,7 +1919,7 @@ def get_response(text):
         )
 
         return (
-            "Auto morning briefing is ON, chief. I "
+            "Auto morning briefing is ON, sir. I "
             "will greet you on the first boot of "
             "each day."
         )
@@ -1928,7 +1934,7 @@ def get_response(text):
         )
 
         return (
-            "Auto morning briefing is OFF, chief. I "
+            "Auto morning briefing is OFF, sir. I "
             "will only brief you when you ask."
         )
 
@@ -1977,13 +1983,13 @@ def get_response(text):
         except Exception:
             return (
                 "I could not reach GitHub just "
-                "now, chief. Try again in a bit."
+                "now, sir. Try again in a bit."
             )
 
         if behind <= 0:
             return (
                 "I am already on the latest code, "
-                "chief. Nothing new on GitHub."
+                "sir. Nothing new on GitHub."
             )
 
         spoken = "; ".join(subjects[:3])
@@ -1996,7 +2002,7 @@ def get_response(text):
 
         return (
             f"There are {behind} new update(s) "
-            f"waiting, chief: {spoken}{more}. "
+            f"waiting, sir: {spoken}{more}. "
             "Say 'update yourself' to pull them."
         )
 
@@ -2020,7 +2026,7 @@ def get_response(text):
         if not found:
             return (
                 "I do not see an external "
-                "microphone plugged in, chief. "
+                "microphone plugged in, sir. "
                 "Connect it and give it a few "
                 "seconds."
             )
@@ -2045,7 +2051,7 @@ def get_response(text):
         if not builtin:
             return (
                 "I cannot find the laptop's own "
-                "microphone, chief."
+                "microphone, sir."
             )
 
         return switch_mic_device(builtin[0][0])
@@ -2081,7 +2087,7 @@ def get_response(text):
         if voice_input.mic_stream is None:
             return (
                 "My ears are not open right now, "
-                "chief."
+                "sir."
             )
 
         try:
@@ -2092,7 +2098,7 @@ def get_response(text):
         except Exception:
             return (
                 "I lost track of my microphone, "
-                "chief. Say 'list microphones'."
+                "sir. Say 'list microphones'."
             )
 
         return (
@@ -2135,17 +2141,17 @@ def get_response(text):
         if not updated:
             if "blocked" in note:
                 return (
-                    f"I could not update myself, chief. "
+                    f"I could not update myself, sir. "
                     f"{note}."
                 )
 
             return (
                 "I am already on the latest code, "
-                "chief. Nothing to upgrade."
+                "sir. Nothing to upgrade."
             )
 
         if subjects:
-            # She speaks it right away, then marks
+            # He speaks it right away, then marks
             # it announced so the next boot does
             # not repeat it.
 
@@ -2154,12 +2160,12 @@ def get_response(text):
             spoken = "; ".join(subjects[:3])
 
             return (
-                "I just upgraded myself, chief. New "
+                "I just upgraded myself, sir. New "
                 f"in this update: {spoken}. A restart "
                 "will bring the new code to life."
             )
 
-        return "I just upgraded myself, chief."
+        return "I just upgraded myself, sir."
 
     if text_lower in ("backup", "backup now", "create backup"):
         return backup.create_backup_text()
@@ -2195,7 +2201,7 @@ def get_response(text):
         reply = memory_manager.projects_summary_text(subject)
 
         if reply is None:
-            return f"I have no notes about '{subject}' yet, chief."
+            return f"I have no notes about '{subject}' yet, sir."
 
         return reply
 
@@ -2224,7 +2230,7 @@ def get_response(text):
         if current_document_text:
             return summarize_current_document()
 
-        return "No document is loaded, chief. Use 'read pdf <path>' first."
+        return "No document is loaded, sir. Use 'read pdf <path>' first."
 
     if text_lower == "speak faster":
         return handle_speed_command("faster")
@@ -2256,7 +2262,7 @@ def get_response(text):
         noise_suppression.set_enabled(True)
 
         return (
-            "Noise suppression is ON, chief. I will "
+            "Noise suppression is ON, sir. I will "
             "subtract the room noise before "
             "listening."
         )
@@ -2270,7 +2276,7 @@ def get_response(text):
         noise_suppression.set_enabled(False)
 
         return (
-            "Noise suppression is OFF, chief. I will "
+            "Noise suppression is OFF, sir. I will "
             "listen to the raw microphone."
         )
 
@@ -2284,7 +2290,7 @@ def get_response(text):
         )
 
         return (
-            "Semantic search is ON, chief. I will now "
+            "Semantic search is ON, sir. I will now "
             "find answers by meaning, not just "
             "matching words."
         )
@@ -2299,7 +2305,7 @@ def get_response(text):
         )
 
         return (
-            "Semantic search is OFF, chief. I will use "
+            "Semantic search is OFF, sir. I will use "
             "the older keyword matching."
         )
 
@@ -2384,7 +2390,7 @@ def process_voice_command(heard):
         "goodbye",
         "quit"
     ):
-        speak("Voice chat off. Goodbye, chief.")
+        speak("Voice chat off. Goodbye, sir.")
         wait_until_speech_done()
         return False
 
@@ -2406,8 +2412,8 @@ def process_voice_command(heard):
         speak(reply)
         wait_until_speech_done()
 
-    # Shadow just spoke; drop that audio so she
-    # cannot hear her own voice as a wake word.
+    # Shadow just spoke; drop that audio so he
+    # cannot hear his own voice as a wake word.
 
     flush_audio_queue()
 
@@ -2423,7 +2429,7 @@ def voice_chat_mode():
     print("[VOICE CHAT] Say 'wake word off' for beep mode, or 'exit' to leave.")
     print()
 
-    speak("Voice chat on. Say Shadow to talk to me, chief.")
+    speak("Voice chat on. Say Shadow to talk to me, sir.")
 
     wait_until_speech_done()
 
@@ -2441,7 +2447,7 @@ def voice_chat_mode():
     while True:
         try:
             # The tray pause button freezes listening:
-            # she idles until chief resumes her from
+            # he idles until sir resumes him from
             # the tray menu.
 
             if tray_icon.pause_event.is_set():
@@ -2520,9 +2526,9 @@ def voice_chat_mode():
                 # command with a short chime. Nine
                 # seconds because the chime itself
                 # eats ~1.5 s of the window before
-                # chief can even start talking.
+                # sir can even start talking.
 
-                speak("Yes chief?")
+                speak("Yes sir?")
                 wait_until_speech_done()
 
                 flush_audio_queue()
@@ -2536,7 +2542,7 @@ def voice_chat_mode():
 
                     # Subtle chime: the name came
                     # through but the command did
-                    # not. Chief knows to retry.
+                    # not. Sir knows to retry.
 
                     play_ear_cone()
 
@@ -2559,7 +2565,7 @@ def voice_chat_mode():
 
                 if not heard:
                     print("[VOICE CHAT] I did not hear anything.")
-                    speak("I did not hear anything, chief.")
+                    speak("I did not hear anything, sir.")
                     wait_until_speech_done()
                     flush_audio_queue()
                     continue
@@ -2600,7 +2606,7 @@ def _restart_running_Shadow():
     # Kill the background autostart pythonw
     # (quote-free PowerShell probe - the -Filter
     # variant silently matched nothing) and
-    # relaunch her through the VBS so she comes
+    # relaunch him through the VBS so he comes
     # back with the new code/device.
 
     import subprocess
@@ -2652,8 +2658,8 @@ def main():
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == "mic":
         # Terminal ear kit: 'Shadow mic' lists what
-        # she can hear through; 'Shadow mic 3' pins
-        # device 3 as her ear and restarts her so
+        # he can hear through; 'Shadow mic 3' pins
+        # device 3 as his ears and restarts him so
         # it takes effect immediately.
 
         import voice_input
@@ -2666,15 +2672,15 @@ def main():
             )
 
             print(
-                "Restarting her so the new ear goes "
+                "Restarting him so the new ear goes "
                 "live..."
             )
 
             _restart_running_Shadow()
 
             print(
-                "She is waking up on it - about 20 "
-                "seconds to warm her ears."
+                "He is waking up on it - about 20 "
+                "seconds to warm his ears."
             )
 
         else:
@@ -2685,8 +2691,8 @@ def main():
         return
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == "skills":
-        # List her drop-in skills (and any
-        # broken files) without waking her.
+        # List his drop-in skills (and any
+        # broken files) without waking him.
 
         import Shadow_skills
 
@@ -2698,7 +2704,7 @@ def main():
         if len(sys.argv) > 2 and sys.argv[2].lower() == "check":
             # Read-only update check: report what
             # is new on GitHub without pulling.
-            # Her working tree is never touched.
+            # his working tree is never touched.
 
             import updater
 
@@ -2734,16 +2740,16 @@ def main():
 
             print(
                 "Run 'Shadow update' to pull "
-                "and restart her."
+                "and restart him."
             )
 
             return
 
         # Terminal self-update: pull, then restart
         # the running Shadow so the new code comes
-        # alive and she announces the changes on
+        # alive and he announces the changes on
         # boot. The announcement stays pending
-        # until that boot, so she never skips it.
+        # until that boot, so he never skips it.
 
         import updater
 
@@ -2763,12 +2769,12 @@ def main():
         for subject in subjects:
             print("  - " + subject)
 
-        print("Restarting her so it goes live...")
+        print("Restarting him so it goes live...")
 
         _restart_running_Shadow()
 
         print(
-            "She is waking up and will tell you "
+            "He is waking up and will tell you "
             "what is new."
         )
 
@@ -2785,24 +2791,24 @@ def main():
         return
 
     # Silent mode (pythonw autostart) has no
-    # console: everything she prints must also
+    # console: everything he prints must also
     # land in Shadow.log or it is lost forever.
 
     setup_logging()
 
     print()
     print(
-        f"[ZOYA] Session started "
+        f"[Shadow] Session started "
         f"{time.strftime('%Y-%m-%d %H:%M:%S')}"
     )
 
     print(
-        f"[ZOYA] Python {sys.version.split()[0]}, "
+        f"[Shadow] Python {sys.version.split()[0]}, "
         f"folder {os.getcwd()}"
     )
 
     # The tray icon comes alive in every mode:
-    # she is visible and controllable from the
+    # he is visible and controllable from the
     # clock, always.
 
     try:
@@ -2817,15 +2823,15 @@ def main():
         tray_icon.start()
 
     except Exception as error:
-        print(f"[ZOYA TRAY] Icon unavailable: {error}")
+        print(f"[Shadow TRAY] Icon unavailable: {error}")
 
     # Launch the desktop window with:
     #   python Shadow.py gui
 
     # Laptop-autostart mode: launch with
     #   python Shadow.py autostart
-    # She starts straight into hands-free
-    # listening: say "Shadow" and she answers.
+    # He starts straight into hands-free
+    # listening: say "Shadow" and he answers.
 
     autostart = (
         len(sys.argv) > 1
@@ -2840,7 +2846,7 @@ def main():
 
     if autostart:
         print("=" * 50)
-        print("ZOYA v1.0 - waking with your laptop")
+        print("Shadow v1.0 - waking with your laptop")
         print("=" * 50)
         print("Say 'Shadow' any time. Type 'exit' to stop.")
         print()
@@ -2850,30 +2856,30 @@ def main():
 
         if voice_enabled:
             speak(
-                "I am here, chief. Just say Shadow."
+                "I am here, sir. Just say Shadow."
             )
 
-        print("[ZOYA EARS] Warming up microphone...")
+        print("[Shadow EARS] Warming up microphone...")
 
         try:
             setup_stt()
 
         except Exception as error:
             print(
-                f"[ZOYA EARS] Warm-up failed: {error}"
+                f"[Shadow EARS] Warm-up failed: {error}"
             )
 
             traceback.print_exc()
 
             if voice_enabled:
                 speak(
-                    "My microphone did not start, chief. "
+                    "My microphone did not start, sir. "
                     "I will keep trying."
                 )
 
         # Scheduled greeting: on the FIRST boot of
-        # the day she reads the morning briefing
-        # aloud (unless chief switched it off or
+        # the day he reads the morning briefing
+        # aloud (unless sir switched it off or
         # it already played today). Queue it after
         # the short hello so they play in order.
 
@@ -2882,17 +2888,17 @@ def main():
 
         except Exception:
             # A briefing failure must never stop
-            # her from listening.
+            # him from listening.
 
-            print("[ZOYA] Morning briefing failed:")
+            print("[Shadow] Morning briefing failed:")
 
             traceback.print_exc()
 
         # Passive update check: compare with
         # GitHub WITHOUT pulling. If new commits
-        # are waiting, she offers them right
+        # are waiting, he offers them right
         # here - adjacent to the morning
-        # briefing - once per release. Chief
+        # briefing - once per release. Sir
         # says 'update yourself' to pull.
 
         try:
@@ -2921,7 +2927,7 @@ def main():
                 )
 
                 speak(
-                    f"Chief, {behind} new "
+                    f"Sir, {behind} new "
                     f"update{plural} waiting on "
                     f"GitHub: {spoken}{more}. "
                     "Say 'update yourself' "
@@ -2931,15 +2937,15 @@ def main():
 
         except Exception:
             print(
-                "[ZOYA] Boot update check failed:"
+                "[Shadow] Boot update check failed:"
             )
 
             traceback.print_exc()
 
         # Self-update announcement: if new code
-        # landed while she was away (via
-        # 'Shadow update' or a manual pull), she
-        # tells chief what changed - exactly once.
+        # landed while he was away (via
+        # 'Shadow update' or a manual pull), he
+        # tells sir what changed - exactly once.
 
         try:
             import updater
@@ -2951,7 +2957,7 @@ def main():
             if new_things and voice_enabled:
                 speak(
                     "I upgraded myself while you were "
-                    "away, chief."
+                    "away, sir."
                 )
 
                 speak(
@@ -2963,7 +2969,7 @@ def main():
         except Exception:
             pass
 
-        # Hot ear swap: if chief plugged an
+        # Hot ear swap: if sir plugged an
         # external microphone in since the last
         # boot, switch to it and say so. Costs
         # nothing when there is no external mic.
@@ -2977,7 +2983,7 @@ def main():
                 speak(swap_message)
 
         except Exception:
-            print("[ZOYA EARS] External mic swap failed:")
+            print("[Shadow EARS] External mic swap failed:")
 
             traceback.print_exc()
 
@@ -2991,7 +2997,7 @@ def main():
         return
 
     print("=" * 50)
-    print("ZOYA v1.0 - your personal AI")
+    print("Shadow v1.0 - your personal AI")
     print("Local AI Assistant")
     print("=" * 50)
     print("Shadow: Online.")
@@ -2999,19 +3005,19 @@ def main():
     print()
 
     if voice_enabled:
-        speak("Shadow online. Good to see you, chief.")
+        speak("Shadow online. Good to see you, sir.")
 
         # Warm up the ears now so the first
         # spoken command is heard from the
         # very first word.
 
-        print("[ZOYA EARS] Warming up microphone...")
+        print("[Shadow EARS] Warming up microphone...")
 
         try:
             setup_stt()
 
         except Exception as error:
-            print(f"[ZOYA EARS] Warm-up failed: {error}")
+            print(f"[Shadow EARS] Warm-up failed: {error}")
 
     tray_icon.set_state(status_text="ready")
 
@@ -3028,7 +3034,7 @@ def main():
                     print(f"You (voice): {user_input}")
 
         except (KeyboardInterrupt, EOFError):
-            print("\nShadow: Goodbye, chief!")
+            print("\nShadow: Goodbye, sir!")
             break
 
         if not user_input:
@@ -3037,10 +3043,10 @@ def main():
         lowered = user_input.lower()
 
         if lowered in ("exit", "quit", "bye", "goodbye"):
-            print("Shadow: Goodbye, chief!")
+            print("Shadow: Goodbye, sir!")
 
             if voice_enabled:
-                speak("Goodbye, chief.")
+                speak("Goodbye, sir.")
 
             break
 

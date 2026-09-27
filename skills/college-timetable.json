@@ -1,6 +1,6 @@
 {
     "name": "college timetable",
-    "description": "today's class timings, pasted by chief",
+    "description": "today's class timings, pasted by sir",
     "match": ["timetable", "class timings", "college timetable"],
     "steps": [
         {

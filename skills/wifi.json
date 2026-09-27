@@ -1,6 +1,6 @@
 {
     "name": "wifi",
-    "description": "which Wi-Fi network she is on",
+    "description": "which Wi-Fi network he is on",
     "match": ["wifi", "which wifi", "wi-fi"],
     "steps": [
         {

@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 #
 # A tiny web server inside Shadow. Open the URL
 # on your phone (same Wi-Fi), enter the PIN once,
-# and chat with her from the sofa.
+# and chat with him from the sofa.
 #
 # SECURITY:
 # - Every request needs the PIN (as a header or
@@ -286,7 +286,7 @@ def get_connection_image():
 
 def get_lan_ips():
     # Every IPv4 address this laptop has on the
-    # network, so chief can pick the right one.
+    # network, so sir can pick the right one.
 
     ips = []
 
@@ -526,7 +526,7 @@ def stop_server():
 
     if server is None:
         return (
-            "Phone access is not running, chief."
+            "Phone access is not running, sir."
         )
 
     server.shutdown()
@@ -535,7 +535,7 @@ def stop_server():
     server_thread = None
 
     return (
-        "Phone access is OFF, chief. Your phone can "
+        "Phone access is OFF, sir. Your phone can "
         "no longer reach me."
     )
 
@@ -544,7 +544,7 @@ def get_status_text():
     if server is None:
         return (
             "Phone access is OFF. Say 'phone on' to "
-            "start it, chief."
+            "start it, sir."
         )
 
     urls = ", ".join(

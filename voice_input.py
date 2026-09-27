@@ -75,7 +75,7 @@ input_channels = 1
 
 effective_down_factor = 1
 
-# All the ways the user might call her.
+# All the ways the user might call him.
 # Renamed to Shadow (2026-09-24); "Shadow" is
 # kept as a legacy alias. The misspellings
 # are how the small speech model commonly
@@ -129,7 +129,7 @@ WAKE_WORDS = (
 # Filler tokens that surround a real command:
 # speech hesitations, address words, and the
 # recognizer's unknown-token mark. TV chatter
-# in the gap after her name tends to leave
+# in the gap after his names tends to leave
 # exactly these behind (2026-09-25: "the"
 # once reached the brain as a command). Only
 # leading and trailing fillers are dropped -
@@ -177,7 +177,7 @@ NOISE_SINGLE_WORDS = (
     "i",
     "you",
     "he",
-    "she",
+    "he",
     "we",
     "my",
     "your",
@@ -219,7 +219,7 @@ model = None
 recognizer = None
 
 # Wake-word-only recognizer: restricted to a
-# tiny grammar of just her names. Vosk's full
+# tiny grammar of just his names. Vosk's full
 # language model prefers common words, so a
 # close-up "Shadow" was winning as "the" or
 # "excuse". With the grammar, the name is
@@ -235,9 +235,9 @@ wake_recognizer = None
 
 # Rolling buffer of the last few seconds of
 # processed audio. One-breath support: the
-# wake grammar only knows her names, so
+# wake grammar only knows his names, so
 # "Shadow what time is it" arrives there as
-# "Shadow [unk] [unk]". When she wakes, the
+# "Shadow [unk] [unk]". When he wakes, the
 # buffer is re-heard with the FULL vocabulary
 # to recover the real command words.
 
@@ -268,14 +268,14 @@ current_gain = 1.0
 
 # Loudest post-gain RMS seen in the current
 # listening window. Diagnostic for the log:
-# shows how loud chief's voice actually
+# shows how loud sir's voice actually
 # arrives at the recognizer.
 
 window_peak_rms = 0.0
 
 # When the room was last genuinely loud (any
 # window). Live-tuning lesson 2026-09-25:
-# chief's loud "HEY" and the grammar's "yo"
+# sir's loud "HEY" and the grammar's "yo"
 # sighting landed in DIFFERENT windows, so a
 # per-window gate stood down mid-phrase. The
 # rescue and net now accept "loud within the
@@ -290,7 +290,7 @@ last_loud_moment = 0.0
 # process that opens it, regardless of rate
 # or channel count. After that window every
 # capture is clean. Shadow therefore warms
-# her ears once per session, before the
+# his ears once per session, before the
 # first real listen.
 
 WARMUP_SECONDS = 12.0
@@ -300,8 +300,8 @@ warmup_done = False
 # Name fragments that mark an EXTERNAL mic
 # (USB webcam/speakerphone/headset) in the
 # Windows device list. When one of these is
-# present she prefers it over the built-in
-# array: a desktop mic sits close to chief's
+# present he prefers it over the built-in
+# array: a desktop mic sits close to sir's
 # mouth, which is exactly what the SST array
 # could not do.
 
@@ -322,7 +322,7 @@ EXTERNAL_MIC_HINTS = (
 )
 
 # Devices whose names contain one of these are
-# never picked as her ear.
+# never picked as his ears.
 
 MIC_BLACKLIST_HINTS = (
     "stereo mix",
@@ -336,7 +336,7 @@ def _is_external_mic_name(name):
     # Bluetooth hands-free devices (headsets,
     # earbuds, soundbars) carry narrowband,
     # echo-prone audio - never auto-prefer
-    # them. Chief can still pin one explicitly
+    # them. Sir can still pin one explicitly
     # with 'use microphone 29'.
 
     if "hands-free" in lowered:
@@ -761,8 +761,8 @@ def setup_stt():
 
 
 def list_input_devices_text():
-    # One call, anywhere: what ears can she
-    # reach right now, and which one she is
+    # One call, anywhere: what ears can he
+    # reach right now, and which one he is
     # wearing. Used by 'Shadow mic' in the
     # terminal and by voice routes.
 
@@ -780,7 +780,7 @@ def list_input_devices_text():
         "mic_device_id"
     )
 
-    lines = ["Microphones I can reach, chief:"]
+    lines = ["Microphones I can reach, sir:"]
 
     found_any = False
 
@@ -820,7 +820,7 @@ def list_input_devices_text():
 
 
 def switch_mic_device(device_id=None):
-    # Hot-swap her ear while she is running:
+    # Hot-swap his ears while he is running:
     # close the current stream, optionally pin
     # a specific device id, and let setup_stt()
     # reopen (which re-warms the mic itself).
@@ -843,7 +843,7 @@ def switch_mic_device(device_id=None):
 
         if not names:
             return (
-                f"Chief, there is no microphone "
+                f"Sir, there is no microphone "
                 f"number {device_id} right now. "
                 "Say 'list microphones' to see "
                 "what I can reach."
@@ -890,21 +890,21 @@ def switch_mic_device(device_id=None):
         )
 
         return (
-            "Ears switched, chief. I am now "
+            "Ears switched, sir. I am now "
             f"listening through: {chosen}."
         )
 
     return (
         "I could not open that microphone, "
-        "chief. My ears are set to pick the "
+        "sir. My ears are set to pick the "
         "best device again on the next "
         "listen."
     )
 
 
 def auto_switch_to_external_mic():
-    # Called when chief plugs a new mic in:
-    # if an external device is present and she
+    # Called when sir plugs a new mic in:
+    # if an external device is present and he
     # is NOT already on it, switch and report.
     # Returns the spoken result, or None when
     # there was nothing to do.
@@ -939,7 +939,7 @@ def auto_switch_to_external_mic():
 
 def external_mic_present():
     # Returns (index, name) of the first
-    # external microphone she can see right
+    # external microphone he can see right
     # now, or None when it is built-in ears
     # only.
 
@@ -1087,7 +1087,7 @@ def audio_callback(indata, frames, time_info, status):
         else:
             # Loud input: duck almost instantly.
             # 2026-09-25 lesson: a slow release
-            # here amplified chief's close-up voice
+            # here amplified sir's close-up voice
             # into hard clipping, and clipped audio
             # decodes as [unk] instead of Shadow.
             # Quiet-speech continuity is unaffected:
@@ -1192,7 +1192,7 @@ def listen_for_command(max_seconds=7, _retried=False):
     # Collect EVERY finished fragment instead of
     # returning on the first one. 2026-09-25
     # lesson: vosk often finalizes a tiny false
-    # start ("the") while chief is still mid-
+    # start ("the") while sir is still mid-
     # sentence, and returning at that instant
     # threw away the rest of the command.
 
@@ -1299,7 +1299,7 @@ def listen_for_command(max_seconds=7, _retried=False):
             # after the beep is degraded speech,
             # not a command: treat it as silence so
             # the brain never answers fluff and the
-            # chime tells chief to retry.
+            # chime tells sir to retry.
 
             print(
                 "[Shadow EARS] only noise heard; "
@@ -1335,7 +1335,7 @@ def listen_for_command(max_seconds=7, _retried=False):
     # Nothing heard on a healthy stream? Only
     # rebuild when the stream gave NO audio at
     # all. Audio without speech just means
-    # chief stayed quiet; rebuilding a healthy
+    # sir stayed quiet; rebuilding a healthy
     # stream costs ~12 s of deaf warm-up.
 
     if not spoken and not _retried and not got_audio:
@@ -1362,11 +1362,11 @@ def listen_for_command(max_seconds=7, _retried=False):
 
 def flush_audio_queue():
     # Drop everything the microphone already
-    # heard. Used after Shadow speaks so she
-    # cannot wake herself up with her own
+    # heard. Used after Shadow speaks so he
+    # cannot wake himself up with his own
     # voice.
 
-    # Also forget the one-breath history: her
+    # Also forget the one-breath history: him
     # own spoken sentences land in the buffer
     # too, and must never be re-heard as a
     # command.
@@ -1428,7 +1428,7 @@ def strip_wake_word(text):
 
 def flush_audio_history():
     # Forget the buffered audio. Used after
-    # she speaks: her own voice must never
+    # he speaks: his own voice must never
     # be re-heard as a one-breath command.
 
     global audio_history_samples
@@ -1462,11 +1462,11 @@ def _is_bare_address(lowered_text):
     # True when the text is ONLY address words
     # and unknown-token marks: "hey", "yo hey",
     # "[unk] hey", "ok [unk]". Live-tuning
-    # lesson 2026-09-25: when chief's name
+    # lesson 2026-09-25: when sir's name
     # syllables arrive degraded (distance, TV),
     # the grammar emits exactly these - the
     # address word with the name lost. That is
-    # still an attempt and must wake her.
+    # still an attempt and must wake him.
 
     tokens = lowered_text.split()
 
@@ -1504,7 +1504,7 @@ def _rehear_history(seconds=4.0):
     # One-breath recovery: re-hear the last
     # few seconds of buffered audio with the
     # FULL vocabulary (no grammar). The wake
-    # grammar only knows her names, so the
+    # grammar only knows his names, so the
     # command in "Shadow what time is it"
     # arrives there as "[unk]" - this pass
     # hears the real words. Returns
@@ -1638,7 +1638,7 @@ def _rehear_history(seconds=4.0):
             continue
 
         # Fillers around the command (TV chatter
-        # in the gap after her name, hesitations)
+        # in the gap after his names, hesitations)
         # are stripped so "the" or "[unk]" can
         # never reach the brain as a command.
         # Empty result = name only: the caller
@@ -1664,7 +1664,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
     # or (False, "") if nothing was heard.
 
     # Uses the GRAMMAR recognizer: it can only
-    # hear her names, so the name always wins
+    # hear his names, so the name always wins
     # over common words.
 
     global mic_stream
@@ -1697,17 +1697,17 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
     # Any audio at all this window means the
     # stream is alive. Lesson from 2026-09-25:
     # rebuilding a HEALTHY stream costs ~12 s
-    # of deaf warm-up, so she used to miss the
+    # of deaf warm-up, so he used to miss the
     # wake word one time in three. Rebuild only
     # when the stream gave us nothing.
 
     got_audio = False
 
     # ONE-BREATH protocol: when the grammar
-    # catches her name, do NOT return at once.
+    # catches his names, do NOT return at once.
     # The command after the name shows up here
     # only as [unk] (the grammar knows names
-    # only), so she waits for the phrase to
+    # only), so he waits for the phrase to
     # end, then re-hears the buffered audio
     # with the FULL vocabulary to recover the
     # real command words.
@@ -1739,7 +1739,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
             wait = max(0.05, min(1.0, remaining))
 
-            # One-breath quiet timer: once her
+            # One-breath quiet timer: once him
             # name was heard, 1.5 s of room noise
             # (re-armed by every new grammar event)
             # means the phrase is over - commit
@@ -1823,7 +1823,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                 # Show finished phrases as well, so
                 # the log reveals exactly what the
                 # recognizer guesses for the wake
-                # word (chief says Shadow, the model
+                # word (sir says Shadow, the model
                 # may write something else).
 
                 print(f"[Shadow EARS] final: {text}")
@@ -1894,13 +1894,13 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                 # Bare-address rescue: the grammar
                 # heard "hey"/"yo"/"ok" (+ maybe
                 # [unk]) but no name. With a genuinely
-                # loud source that is chief starting a
+                # loud source that is sir starting a
                 # phrase - the name got clipped. Treat
                 # it as an attempt. TV chatter says
                 # these words too but much quieter
                 # (~700-1400 RMS vs 2000+ up close),
                 # so the loudness gate keeps the TV
-                # from waking her.
+                # from waking him.
 
                 if (
                     one_breath_deadline is None
@@ -1912,7 +1912,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                 ):
                     print(
                         "[Shadow EARS] address without a "
-                        "clear name - assuming chief, "
+                        "clear name - assuming sir, "
                         "waiting for the command."
                     )
 
@@ -1994,7 +1994,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
         # microphone ONLY if the stream was
         # truly silent (no audio blocks at all).
         # A window with audio but no wake word
-        # just means chief did not say it yet:
+        # just means sir did not say it yet:
         # the healthy stream is reused instantly
         # on the next listen.
 

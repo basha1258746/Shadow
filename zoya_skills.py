@@ -1,15 +1,15 @@
 import json
 import os
 
-# ---------------- ZOYA SKILLS ----------------
+# ---------------- Shadow SKILLS ----------------
 #
 # Borrowed from Stanford's OpenShadow (their
 # "skills" idea): instead of hard-coding every
-# command deep inside get_response, chief can
-# drop a small JSON file into skills/ and she
-# discovers it on her own. A broken skill can
-# never take her down - it just sits ignored,
-# and she says so honestly when asked.
+# command deep inside get_response, sir can
+# drop a small JSON file into skills/ and he
+# discovers it on his own. A broken skill can
+# never take him down - it just sits ignored,
+# and he says so honestly when asked.
 
 SKILLS_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -42,7 +42,7 @@ def _load_skill(path):
     # One file -> (skill dict, error string).
     # Never raises: a bad file returns the
     # error so load_all_skills can report it
-    # without touching her listening loop.
+    # without touching his listening loop.
 
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -153,7 +153,7 @@ def _match_score(skill, text_lower):
 def _run_step(run):
     # Only shell-safe steps: simple commands,
     # no quotes, no pipes, no redirection.
-    # Her voice must never become a shell
+    # his voice must never become a shell
     # injection.
 
     import subprocess
@@ -229,7 +229,7 @@ def try_skill(text_lower):
 
     if best_score < 2:
         # A faint keyword inside a longer
-        # sentence is not enough - she only
+        # sentence is not enough - he only
         # fires on exact or prefix matches.
 
         return None
@@ -245,7 +245,7 @@ def try_skill(text_lower):
             if error:
                 return (
                     f"The skill '{skill['name']}' "
-                    f"hit a snag, chief: {error}"
+                    f"hit a snag, sir: {error}"
                 )
 
             outs.append(out)
@@ -268,12 +268,12 @@ def list_skills_text():
     if not skills and not errors:
         return (
             "I have no skills installed, "
-            "chief. Drop a JSON file into my "
+            "sir. Drop a JSON file into my "
             "skills folder and I will learn "
             "it on my next listen."
         )
 
-    lines = ["My skills, chief:"]
+    lines = ["My skills, sir:"]
 
     for skill in skills:
         trigger = skill["match"][0]
