@@ -202,6 +202,16 @@ When ON, all lookups are **keyless and free** — no accounts, no API keys:
 - **search the web for <topic>** — DuckDuckGo's instant-answer API, with an
   automatic Wikipedia fallback when the web has nothing
 
+### The dashboard — his inner life, on one page
+
+Say **"open dashboard"** (or just open `http://localhost:8766`) — a dark,
+clean page showing his **status** (ears, brain, online gate), **reminders**,
+**lessons**, **skills** (plus any broken files), his **last-heard** log, and
+**live chat** that runs through the same brain, skills, and confirmation
+gates as his voice. It starts quietly at boot, polls every 15 s, and binds
+to **127.0.0.1 only** — it exists on this laptop and nowhere else on the
+network, so no PIN is needed (unlike the phone server, which faces the LAN).
+
 ### Reminders & routines — he anticipates
 
 The week-two feature: a background scheduler checks his store every 5
@@ -299,6 +309,7 @@ His wake word went through four live-tuned layers — each one earned by a real 
 - [x] Self-updates: Shadow update check / Shadow update, spoken changelog on boot
 - [x] Auto morning briefing on first boot of each day
 - [x] Drop-in skills system (borrowed from OpenShadow)
+- [x] Localhost dashboard: status, reminders, lessons, skills, live chat
 - [ ] Online mode (web search / weather behind an explicit switch)
 
 ---

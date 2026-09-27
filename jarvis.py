@@ -3,6 +3,7 @@ import re
 import sys
 import time
 import threading
+import webbrowser
 import traceback
 import urllib.request
 import urllib.error
@@ -1684,6 +1685,7 @@ def show_help():
         "- 'remind me to ... in 20 minutes' / 'at 7 pm' - held thoughts\n"
         "- 'every day at 9 remind me to ...' - recurring routines\n"
         "- 'my reminders' / 'cancel reminder <word>'\n"
+        "- 'open dashboard' - my inner life in your browser\n"
         "- 'my lessons' / 'forget lesson <word>' - review or drop lessons\n"
         "- 'check for updates' - I look without touching anything\n"
         "- 'show settings' - see all my settings\n"
@@ -1791,6 +1793,54 @@ def get_response(text):
 
     except Exception:
         pass
+
+    # ---- DASHBOARD (before the confirmation
+    # gate: 'open dashboard' is his own page,
+    # not a computer-control action) ----
+
+    if text_lower in (
+        "open dashboard",
+        "dashboard",
+        "show dashboard",
+    ):
+        import dashboard_server
+
+        reply = (
+            dashboard_server.start_server()
+        )
+
+        try:
+            webbrowser.open(
+                "http://localhost:"
+                + str(
+                    dashboard_server
+                    .SERVER_PORT
+                )
+            )
+
+        except Exception:
+            pass
+
+        return reply + (
+            " Opening it in your browser now."
+        )
+
+    if text_lower in (
+        "close dashboard",
+        "dashboard off",
+        "dashboard status",
+    ):
+        import dashboard_server
+
+        if text_lower == "dashboard status":
+            return (
+                dashboard_server
+                .get_status_text()
+            )
+
+        return (
+            dashboard_server.stop_server()
+        )
 
     # ---- COMPUTER CONTROL: CONFIRMATION GATE ----
 
@@ -3325,6 +3375,24 @@ def main():
         except Exception:
             print(
                 "[Shadow] Reminders failed to start:"
+            )
+
+            traceback.print_exc()
+
+        # The dashboard: loopback-only web page
+        # with his status, reminders, lessons,
+        # skills, last-heard, and live chat.
+        # Started quietly at boot; 'open
+        # dashboard' raises the browser.
+
+        try:
+            import dashboard_server
+
+            dashboard_server.start_server()
+
+        except Exception:
+            print(
+                "[Shadow] Dashboard failed to start:"
             )
 
             traceback.print_exc()
