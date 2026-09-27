@@ -26,6 +26,7 @@ MODULES = (
     "test_updater",
     "test_memory_and_settings",
     "test_reminders",
+    "test_dashboard",
 )
 
 
