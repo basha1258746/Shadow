@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw
 
 import pystray
 
-# ---------------- Shadow IN THE SYSTEM TRAY ----------------
+# ---------------- SHADOW IN THE SYSTEM TRAY ----------------
 #
 # A small icon lives next to the clock so sir
 # can always see his state and control him:
@@ -18,7 +18,7 @@ import pystray
 #   Pause / resume listening
 #   Mute / unmute voice
 #   Stop speaking (drop the queue)
-#   Exit Shadow
+#   Exit SHADOW
 #
 # The icon runs on its own daemon thread; state
 # changes are cheap image redraws. Works in the
@@ -31,12 +31,12 @@ state = {
     "listening": False,
     "muted": False,
     "paused": False,
-    "status_text": "Shadow starting...",
+    "status_text": "SHADOW starting...",
 }
 
 pause_event = threading.Event()
 
-# Set by Shadow.py so menu actions can reach
+# Set by shadow.py so menu actions can reach
 # the running program (stop speech, exit, open
 # the GUI window).
 
@@ -118,7 +118,7 @@ def _refresh():
 
 
 def _title_text():
-    parts = ["Shadow"]
+    parts = ["SHADOW"]
 
     if state["paused"]:
         parts.append("- mic PAUSED")
@@ -262,13 +262,13 @@ def start():
             ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(
-                "Exit Shadow",
+                "Exit SHADOW",
                 _exit,
             ),
         )
 
         _icon = pystray.Icon(
-            "Shadow",
+            "SHADOW",
             _draw_icon(COLORS["ready"]),
             _title_text(),
             menu,
@@ -283,7 +283,7 @@ def start():
 
 
 if __name__ == "__main__":
-    print("Shadow tray icon test")
+    print("SHADOW tray icon test")
 
     print(
         "Look at the system tray (near the clock): "

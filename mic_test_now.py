@@ -33,7 +33,7 @@ SEGMENT_SECONDS = 4.0
 #
 #   python mic_test_now.py distance
 #
-# Run it with Shadow STOPPED - he holds the
+# Run it with SHADOW STOPPED - he holds the
 # microphone exclusively and a live test
 # would find the device already in use.
 
@@ -49,7 +49,7 @@ SPEAK_SECONDS = 5.0
 
 NOISE_SECONDS = 2.0
 
-SPEAK_LINE = "Shadow, what time is it"
+SPEAK_LINE = "SHADOW, what time is it"
 
 
 # Verdict bands, calibrated against him
@@ -187,7 +187,7 @@ def run_distance_study():
 
     if device_id is None:
         print("No microphone could be opened.")
-        print("Stop Shadow first, then retry.")
+        print("Stop SHADOW first, then retry.")
         return
 
     name = sd.query_devices(
@@ -346,7 +346,7 @@ def run_distance_study():
 
     print()
     print(
-        "Wire the winner in with 'Shadow mic' - "
+        "Wire the winner in with 'shadow mic' - "
         "he pins the best device by name and "
         "re-tests automatically on boot."
     )
@@ -468,7 +468,7 @@ def main():
         print("  python mic_test_now.py distance")
         print("      RMS vs distance pickup study")
         print()
-        print("Stop Shadow first - he holds the mic.")
+        print("Stop SHADOW first - he holds the mic.")
         return
 
     # Default: the rate-matrix sweep. Auto-pick
@@ -483,7 +483,7 @@ def main():
 
     if device_id is None:
         print("No microphone could be opened.")
-        print("Stop Shadow first, then retry.")
+        print("Stop SHADOW first, then retry.")
         return
 
     name = sd.query_devices(device_id)["name"]

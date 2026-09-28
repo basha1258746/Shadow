@@ -4,10 +4,10 @@ from datetime import datetime
 
 BACKUP_DIR = "backups"
 
-# Everything that makes Shadow Shadow.
+# Everything that makes SHADOW SHADOW.
 
 BACKUP_FILES = [
-    "Shadow.py",
+    "shadow.py",
     "document_reader.py",
     "app_control.py",
     "file_control.py",
@@ -162,10 +162,10 @@ def restore_backup(identifier=None):
     return snapshot, restored, safety_path
 
 
-# ---------- TEXT HELPERS FOR Shadow ----------
+# ---------- TEXT HELPERS FOR SHADOW ----------
 
 def create_backup_text():
-    print("[Shadow TOOL: Creating backup...]")
+    print("[SHADOW TOOL: Creating backup...]")
 
     path, copied, missing = create_backup()
 
@@ -212,7 +212,7 @@ def list_backups_text():
 
 
 def restore_backup_text(identifier=None):
-    print("[Shadow TOOL: Restoring backup...]")
+    print("[SHADOW TOOL: Restoring backup...]")
 
     result = restore_backup(identifier)
 
@@ -234,7 +234,7 @@ def restore_backup_text(identifier=None):
 
 
 if __name__ == "__main__":
-    print("Shadow BACKUP TEST")
+    print("SHADOW BACKUP TEST")
     print("-" * 40)
 
     path, copied, missing = create_backup()

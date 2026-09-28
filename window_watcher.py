@@ -92,7 +92,7 @@ def _grab_window_text(window):
 
     except Exception as error:
         print(
-            f"[Shadow WATCHER] Read failed: {error}"
+            f"[SHADOW WATCHER] Read failed: {error}"
         )
         return ""
 
@@ -103,7 +103,7 @@ def _watch_loop(window_title, summarize, speak_fn, voice_on):
     # when voice is on.
 
     print(
-        f"[Shadow WATCHER] Watching '{window_title}' "
+        f"[SHADOW WATCHER] Watching '{window_title}' "
         f"every {POLL_SECONDS} seconds."
     )
 
@@ -117,7 +117,7 @@ def _watch_loop(window_title, summarize, speak_fn, voice_on):
                 "gone, so I stopped watching it."
             )
 
-            print(f"[Shadow WATCHER] {message}")
+            print(f"[SHADOW WATCHER] {message}")
 
             watch_state["active"] = False
 
@@ -148,7 +148,7 @@ def _watch_loop(window_title, summarize, speak_fn, voice_on):
             when = time_module.strftime("%H:%M:%S")
 
             print(
-                "[Shadow WATCHER] Content changed - "
+                "[SHADOW WATCHER] Content changed - "
                 "summarizing..."
             )
 
@@ -164,7 +164,7 @@ def _watch_loop(window_title, summarize, speak_fn, voice_on):
                 f"'{window_title}'. {summary}"
             )
 
-            print(f"[Shadow WATCHER] {message}")
+            print(f"[SHADOW WATCHER] {message}")
 
             if voice_on():
                 speak_fn(message)
@@ -269,9 +269,9 @@ def watch_status_text():
 
 
 if __name__ == "__main__":
-    print("Shadow WINDOW WATCHER TEST")
+    print("SHADOW WINDOW WATCHER TEST")
 
-    window = find_window("Shadow")
+    window = find_window("shadow")
 
     if window:
         print(f"Found: {window.title}")

@@ -14,7 +14,7 @@ import updater
 
 # The state file is real, so every test
 # works on a scratch copy and restores it
-# afterwards - the running Shadow must
+# afterwards - the running SHADOW must
 # never notice.
 
 STATE_BACKUP = updater.STATE_FILE + ".testbak"

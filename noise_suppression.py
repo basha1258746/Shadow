@@ -169,7 +169,7 @@ def learn_from_noise(frames):
     gate_state = None
 
     print(
-        "[Shadow EARS] Learned the room noise "
+        "[SHADOW EARS] Learned the room noise "
         f"profile ({len(mags)} frames)."
     )
 

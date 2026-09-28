@@ -13,7 +13,7 @@ sys.path.insert(
 import dashboard_server
 
 # A scratch port so the suite never fights
-# the real Shadow process for 8766.
+# the real SHADOW process for 8766.
 
 dashboard_server.SERVER_PORT = 8799
 
@@ -49,7 +49,7 @@ def test_page_serves():
 
     assert code == 200
 
-    assert b"Shadow" in body
+    assert b"SHADOW" in body
 
     assert b"/api/state" in body or (
         "api/state" in body.decode("utf-8")
@@ -145,7 +145,7 @@ def test_streaming_chat_endpoint():
         events[-1]
     )
 
-    assert "Shadow" in events[-1][
+    assert "SHADOW" in events[-1][
         "reply"], events[-1]
 
     # Brain replies stream sentence pieces.

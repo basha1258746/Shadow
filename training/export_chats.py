@@ -1,6 +1,6 @@
-# Chat-log exporter for Shadow fine-tuning.
+# Chat-log exporter for SHADOW fine-tuning.
 #
-# Reads Shadow.log (he logs every heard
+# Reads shadow.log (he logs every heard
 # command and his reply there), filters out
 # wake-word noise, and writes one JSON line
 # per exchange:
@@ -27,7 +27,7 @@ LOG_FILE = os.path.join(
     os.path.dirname(
         os.path.dirname(os.path.abspath(__file__))
     ),
-    "Shadow.log",
+    "shadow.log",
 )
 
 OUT_FILE = os.path.join(
@@ -59,7 +59,7 @@ NOISE_PREFIXES = (
 MIN_USER_CHARS = 12
 
 SYSTEM_PROMPT = (
-    "You are Shadow, the user's personal AI "
+    "You are SHADOW, the user's personal AI "
     "butler - a refined British gentleman with "
     "dry wit who calls the user 'sir'. You run "
     "locally on his Windows laptop."
@@ -109,7 +109,7 @@ def extract_exchanges(lines):
 
         text = line.strip()
 
-        if text.startswith("Shadow:"):
+        if text.startswith("SHADOW:"):
             text = text[7:].strip()
 
         current_reply.append(text)
@@ -124,7 +124,7 @@ def extract_exchanges(lines):
 
 def main():
     if not os.path.exists(LOG_FILE):
-        print("No Shadow.log found - nothing to export.")
+        print("No shadow.log found - nothing to export.")
         return
 
     with open(LOG_FILE, "r", encoding="utf-8",

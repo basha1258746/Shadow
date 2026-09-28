@@ -9,7 +9,7 @@ except ImportError:
     PIL_AVAILABLE = False
 
 # Screen understanding is ALWAYS on-demand:
-# Shadow only captures when the user asks.
+# SHADOW only captures when the user asks.
 # Nothing is saved to disk; the screenshot
 # lives in memory just long enough to be
 # read, then it is dropped.
@@ -55,13 +55,13 @@ def capture_screen():
 
     if not PIL_AVAILABLE:
         print(
-            "[Shadow EYES] Pillow is not installed."
+            "[SHADOW EYES] Pillow is not installed."
         )
         return None
 
     try:
         print(
-            "[Shadow EYES] Taking a screenshot..."
+            "[SHADOW EYES] Taking a screenshot..."
         )
 
         shot = ImageGrab.grab()
@@ -87,7 +87,7 @@ def capture_screen():
 
     except Exception as error:
         print(
-            f"[Shadow EYES] Capture failed: {error}"
+            f"[SHADOW EYES] Capture failed: {error}"
         )
         return None
 
@@ -111,21 +111,21 @@ def read_screen_text():
 
     try:
         print(
-            "[Shadow EYES] Reading the screen..."
+            "[SHADOW EYES] Reading the screen..."
         )
 
         text = ocr_image_safe(shot)
 
     except Exception as error:
         print(
-            f"[Shadow EYES] OCR failed: {error}"
+            f"[SHADOW EYES] OCR failed: {error}"
         )
         return window_title, ""
 
     text = text.strip()
 
     print(
-        f"[Shadow EYES] Read {len(text)} characters "
+        f"[SHADOW EYES] Read {len(text)} characters "
         f"from the screen."
     )
 
@@ -141,7 +141,7 @@ def describe_screen(question=None):
     # only ever sees extracted text, never
     # the image itself.
 
-    from Shadow import ask_ollama
+    from shadow import ask_ollama
 
     window_title, screen_text = read_screen_text()
 
@@ -186,7 +186,7 @@ def describe_screen(question=None):
         )
 
     prompt = f"""
-You are Shadow, a local AI assistant.
+You are SHADOW, a local AI assistant.
 
 The text below was read from the user's
 screen with OCR (it may contain small
@@ -210,7 +210,7 @@ SCREEN TEXT:
         {
             "role": "system",
             "content": (
-                "You are Shadow. Describe the user's "
+                "You are SHADOW. Describe the user's "
                 "screen using only the provided OCR "
                 "text. Never invent details. Be "
                 "concise and helpful."
@@ -224,14 +224,14 @@ SCREEN TEXT:
     ]
 
     print(
-        "[Shadow EYES] Thinking about what I saw..."
+        "[SHADOW EYES] Thinking about what I saw..."
     )
 
     return ask_ollama(messages)
 
 
 if __name__ == "__main__":
-    print("Shadow SCREEN VISION TEST")
+    print("SHADOW SCREEN VISION TEST")
 
     title, text = read_screen_text()
 

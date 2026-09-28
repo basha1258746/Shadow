@@ -1,4 +1,4 @@
-"""Shadow semantic document search.
+"""SHADOW semantic document search.
 
 Upgrades retrieval from keyword matching to
 meaning-based search using local embeddings.
@@ -96,7 +96,7 @@ def get_embedding(text):
     except Exception:
         # One failure disables the semantic engine
         # for this session and switches to keyword
-        # fallback, so Shadow never hangs.
+        # fallback, so SHADOW never hangs.
 
         ollama_healthy = False
 
@@ -170,7 +170,7 @@ def _build_cache(chunks):
         embedding_cache.append(embedding)
 
         print(
-            f"[Shadow BRAIN] Embedded chunk "
+            f"[SHADOW BRAIN] Embedded chunk "
             f"{index + 1}/{len(chunks)}"
         )
 
@@ -249,7 +249,7 @@ def semantic_search_chunks(
         results.append(chunks[index])
 
         print(
-            f"[Shadow BRAIN] match {len(results)}: "
+            f"[SHADOW BRAIN] match {len(results)}: "
             f"chunk {index + 1} "
             f"(similarity {score:.2f})"
         )
@@ -259,7 +259,7 @@ def semantic_search_chunks(
 
 if __name__ == "__main__":
 
-    print("Shadow SEMANTIC SEARCH TEST")
+    print("SHADOW SEMANTIC SEARCH TEST")
     print("-" * 40)
 
     demo_chunks = [

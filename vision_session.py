@@ -14,10 +14,10 @@ CHAR_LIMIT = 3000
 
 
 def describe(text, title):
-    from Shadow import ask_ollama
+    from shadow import ask_ollama
 
     prompt = f"""
-You are Shadow.
+You are SHADOW.
 
 The text below was read from the user's
 screen while they were working normally.
@@ -38,7 +38,7 @@ Do not invent details.
         {
             "role": "system",
             "content": (
-                "You are Shadow. Describe the user's "
+                "You are SHADOW. Describe the user's "
                 "activity from OCR text only. Two "
                 "short sentences. Never invent "
                 "details."
@@ -58,10 +58,10 @@ def main():
     observations = []
 
     print("=" * 55)
-    print("Shadow LIVE VISION SESSION")
+    print("SHADOW LIVE VISION SESSION")
     print("=" * 55)
     print("baa: use the laptop normally!")
-    print(f"Shadow will peek {ROUNDS} times, "
+    print(f"SHADOW will peek {ROUNDS} times, "
           f"about every {GAP_SECONDS} seconds.")
     print("=" * 55)
 
@@ -80,7 +80,7 @@ def main():
                 "fullscreen)."
             )
 
-            print(f"Shadow saw: {note}")
+            print(f"SHADOW saw: {note}")
 
             observations.append(
                 (time.strftime("%H:%M:%S"),
@@ -98,7 +98,7 @@ def main():
             note = describe(text, title)
 
             print(
-                f"Shadow saw ({time.time() - start:.0f}s):"
+                f"SHADOW saw ({time.time() - start:.0f}s):"
             )
             print(note)
 

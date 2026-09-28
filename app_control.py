@@ -53,7 +53,7 @@ def open_application(app_name):
 
 if __name__ == "__main__":
 
-    print("Shadow application control test")
+    print("SHADOW application control test")
     print("-" * 40)
 
     test_apps = [

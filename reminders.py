@@ -5,13 +5,13 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-# ---------------- Shadow REMINDERS ----------------
+# ---------------- SHADOW REMINDERS ----------------
 #
 # Week two, option A phase one: he starts
 # anticipating. Chief sets reminders by
 # voice; a daemon thread checks them every
 # 5 seconds and fires them through a
-# callback Shadow.py provides (so the
+# callback shadow.py provides (so the
 # announcement goes out of his actual
 # mouth, with all the speaking machinery).
 #
@@ -40,7 +40,7 @@ _routine_executor = None
 
 
 def set_routine_executor(executor):
-    # Registered by Shadow.py at boot: the
+    # Registered by shadow.py at boot: the
     # function that RUNS routine tasks
     # (briefing reads, reminder roundups).
     # Lives there because routines need his
@@ -752,7 +752,7 @@ def _check_and_fire():
         if reminder.get("routine"):
             # Routine tasks run instead of being
             # spoken. The executor lives in
-            # Shadow.py (it needs the briefing);
+            # shadow.py (it needs the briefing);
             # registered at boot via
             # set_routine_executor.
 
@@ -780,7 +780,7 @@ def _check_and_fire():
 
 
 def start_scheduler(fire_callback):
-    # Called once from Shadow.py at boot.
+    # Called once from shadow.py at boot.
     # The callback receives (task_text,
     # reminder_dict) and speaks it however
     # it likes.

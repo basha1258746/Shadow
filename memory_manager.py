@@ -70,7 +70,7 @@ def load_memory():
             stored = json.load(file)
 
     except Exception as error:
-        print(f"[Shadow MEMORY] Could not read memory: {error}")
+        print(f"[SHADOW MEMORY] Could not read memory: {error}")
         return memory
 
     # Migration: the old flat format had
@@ -99,7 +99,7 @@ def load_memory():
             memory["personal"]["user_name"] = old_name
 
         print(
-            "[Shadow MEMORY] Old memory format "
+            "[SHADOW MEMORY] Old memory format "
             "migrated to the new 3-store format."
         )
 
@@ -140,7 +140,7 @@ def save_memory():
             json.dump(memory, file, indent=4)
 
     except Exception as error:
-        print(f"[Shadow MEMORY] Could not save: {error}")
+        print(f"[SHADOW MEMORY] Could not save: {error}")
 
 
 # ---------------- PERSONAL ----------------
@@ -377,7 +377,7 @@ def projects_summary_text(project):
 # ---------------- DOCUMENTS ----------------
 
 def add_document_memory(title, path, summary):
-    # Remember a document Shadow has read, so it
+    # Remember a document SHADOW has read, so it
     # can be found again in later sessions.
 
     memory["documents"].append({
@@ -485,7 +485,7 @@ def knowledge_report_text():
     else:
         lines.append(
             "- No project notes yet. Tell me things "
-            "like: remember project Shadow: added voice"
+            "like: remember project shadow: added voice"
         )
 
     lines.append("")
@@ -573,7 +573,7 @@ def briefing_memory_lines():
 
 
 if __name__ == "__main__":
-    print("Shadow MEMORY MANAGER TEST")
+    print("SHADOW MEMORY MANAGER TEST")
     print("-" * 40)
 
     load_memory()

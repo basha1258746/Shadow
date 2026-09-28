@@ -1,4 +1,4 @@
-# Week Two — Where Shadow Goes Next
+# Week Two — Where SHADOW Goes Next
 
 Week one (Sep 23–27) built him: ears, brain, hands, voice, memory,
 skills, self-updates, and a persona. Week two is about making him
@@ -16,9 +16,9 @@ already built.
 
 ## Option A — Routines & Timers ⭐ RECOMMENDED
 
-*"Shadow, remind me to drink water every hour."*
-*"Shadow, wake me at 7 with the briefing."*
-*"Shadow, every evening at 9, summarize what I did today."*
+*"SHADOW, remind me to drink water every hour."*
+*"SHADOW, wake me at 7 with the briefing."*
+*"SHADOW, every evening at 9, summarize what I did today."*
 
 A background scheduler thread: voice-set reminders, recurring
 routines, timed actions. Composes with **everything he already has**
@@ -33,7 +33,7 @@ it is a loop and a JSON file, not a model.
 
 ## Option B — The Dashboard
 
-*"Shadow, open your dashboard."* A local web page (localhost like the
+*"SHADOW, open your dashboard."* A local web page (localhost like the
 phone server) showing battery, his last-heard log, lessons, skills,
 upcoming reminders, live chat, and the ear diagnostics.
 

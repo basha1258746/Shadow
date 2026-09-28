@@ -76,25 +76,32 @@ input_channels = 1
 effective_down_factor = 1
 
 # All the ways the user might call him.
-# Renamed to Shadow (2026-09-24); "Shadow" is
+# Renamed to SHADOW (2026-09-24); "Shadow" is
 # kept as a legacy alias. The misspellings
 # are how the small speech model commonly
 # hears each name in different voices.
 
 WAKE_WORDS = (
-    # Shadow and its likely mishearings.
+    # SHADOW and the words the recognizer
+    # reaches for when the name comes fast
+    # or clipped. Only REAL model-vocabulary
+    # words belong here - invented spellings
+    # can never match.
+
+    "shadow",
+    "shadows",
+    "shadowy",
+    "shallow",
+    "shade",
+
+    # The old name, still honored end to
+    # end - and its soundalikes stay as
+    # safety nets in the legal vocabulary.
 
     "Shadow",
     "soya",
     "joya",
     "zoyla",
-
-    # Real words the model reaches for when
-    # the name comes fast or clipped: 2026-09-25
-    # log showed "hey" surviving while the name
-    # itself vanished. These soundalikes are in
-    # the model vocabulary, so the name can
-    # always land SOMEWHERE legal.
 
     "zoe",
     "zoey",
@@ -105,6 +112,9 @@ WAKE_WORDS = (
     "jo",
     "zoa",
 
+    "hey shadow",
+    "ok shadow",
+    "yo shadow",
     "hey Shadow",
     "ok Shadow",
     "yo Shadow",
@@ -113,17 +123,7 @@ WAKE_WORDS = (
     "yo soya",
     "hey joya",
     "ok joya",
-    "yo joya",
-
-    # Legacy name, still honored.
-
-    "Shadow",
-    "jervis",
-    "Shadow,",
-    "hey Shadow",
-    "ok Shadow",
-    "yo Shadow",
-    "airbus"
+    "yo joya"
 )
 
 # Filler tokens that surround a real command:
@@ -221,7 +221,7 @@ recognizer = None
 # Wake-word-only recognizer: restricted to a
 # tiny grammar of just his names. Vosk's full
 # language model prefers common words, so a
-# close-up "Shadow" was winning as "the" or
+# close-up "SHADOW" was winning as "the" or
 # "excuse". With the grammar, the name is
 # one of the ONLY legal outputs, so it wins
 # every time. TV chatter can no longer
@@ -236,7 +236,7 @@ wake_recognizer = None
 # Rolling buffer of the last few seconds of
 # processed audio. One-breath support: the
 # wake grammar only knows his names, so
-# "Shadow what time is it" arrives there as
+# "SHADOW what time is it" arrives there as
 # "Shadow [unk] [unk]". When he wakes, the
 # buffer is re-heard with the FULL vocabulary
 # to recover the real command words.
@@ -289,7 +289,7 @@ last_loud_moment = 0.0
 # audio for the first ~12 seconds of every
 # process that opens it, regardless of rate
 # or channel count. After that window every
-# capture is clean. Shadow therefore warms
+# capture is clean. SHADOW therefore warms
 # his ears once per session, before the
 # first real listen.
 
@@ -504,7 +504,7 @@ def _open_stream(device_id):
             effective_down_factor = rate / SAMPLE_RATE
 
             print(
-                f"[Shadow EARS] Microphone opened: "
+                f"[SHADOW EARS] Microphone opened: "
                 f"{channels}ch @ {rate}Hz"
             )
 
@@ -539,7 +539,7 @@ def warmup_microphone(force=False):
         return
 
     print(
-        "[Shadow EARS] Warming up the microphone "
+        "[SHADOW EARS] Warming up the microphone "
         "(the array needs a few seconds to "
         "settle)..."
     )
@@ -611,7 +611,7 @@ def warmup_microphone(force=False):
 
     globals()["warmup_done"] = True
 
-    print("[Shadow EARS] Warm-up complete. Ears ready.")
+    print("[SHADOW EARS] Warm-up complete. Ears ready.")
 
 
 def setup_stt():
@@ -626,14 +626,14 @@ def setup_stt():
 
     if not VOSK_AVAILABLE:
         print(
-            "[Shadow EARS] vosk is not installed. "
+            "[SHADOW EARS] vosk is not installed. "
             "Voice input is disabled."
         )
         return False
 
     if not SOUNDDEVICE_AVAILABLE:
         print(
-            "[Shadow EARS] sounddevice is not installed. "
+            "[SHADOW EARS] sounddevice is not installed. "
             "Voice input is disabled."
         )
         return False
@@ -676,7 +676,7 @@ def setup_stt():
 
     if model_path is None:
         print(
-            "[Shadow EARS] No speech model folder found. "
+            "[SHADOW EARS] No speech model folder found. "
             f"Looked for: {', '.join(PREFERRED_MODELS)}"
         )
         return False
@@ -688,7 +688,7 @@ def setup_stt():
 
         if model is None:
             print(
-                "[Shadow EARS] Loading speech model: "
+                "[SHADOW EARS] Loading speech model: "
                 f"{os.path.basename(model_path)}..."
             )
 
@@ -708,13 +708,13 @@ def setup_stt():
 
         if device_id is None:
             print(
-                "[Shadow EARS] No usable microphone found."
+                "[SHADOW EARS] No usable microphone found."
             )
             return False
 
         if not _open_stream(device_id):
             print(
-                "[Shadow EARS] Could not open "
+                "[SHADOW EARS] Could not open "
                 "microphone with any known format."
             )
 
@@ -737,7 +737,7 @@ def setup_stt():
         input_ready = True
 
         print(
-            f"[Shadow EARS] Microphone ready: "
+            f"[SHADOW EARS] Microphone ready: "
             f"{device_name} "
             f"(device {device_id})"
         )
@@ -752,7 +752,7 @@ def setup_stt():
         return True
 
     except Exception as error:
-        print(f"[Shadow EARS] Could not start microphone: {error}")
+        print(f"[SHADOW EARS] Could not start microphone: {error}")
         mic_stream = None
         recognizer = None
         model = None
@@ -763,7 +763,7 @@ def setup_stt():
 def list_input_devices_text():
     # One call, anywhere: what ears can he
     # reach right now, and which one he is
-    # wearing. Used by 'Shadow mic' in the
+    # wearing. Used by 'shadow mic' in the
     # terminal and by voice routes.
 
     import sounddevice as sd
@@ -1089,7 +1089,7 @@ def audio_callback(indata, frames, time_info, status):
             # 2026-09-25 lesson: a slow release
             # here amplified sir's close-up voice
             # into hard clipping, and clipped audio
-            # decodes as [unk] instead of Shadow.
+            # decodes as [unk] instead of SHADOW.
             # Quiet-speech continuity is unaffected:
             # this branch only runs when the input
             # is genuinely loud (rms > target).
@@ -1170,7 +1170,7 @@ def listen_for_command(max_seconds=7, _retried=False):
 
     # Drop anything the microphone captured
     # before this listen started, such as the
-    # tail of Shadow's own last sentence.
+    # tail of SHADOW's own last sentence.
 
     flush_audio_queue()
 
@@ -1256,7 +1256,7 @@ def listen_for_command(max_seconds=7, _retried=False):
 
                 if final_part:
                     print(
-                        f"[Shadow EARS] command part: "
+                        f"[SHADOW EARS] command part: "
                         f"{final_part}"
                     )
 
@@ -1288,7 +1288,7 @@ def listen_for_command(max_seconds=7, _retried=False):
         ).get("text", "")
 
         if tail:
-            print(f"[Shadow EARS] command tail: {tail}")
+            print(f"[SHADOW EARS] command tail: {tail}")
 
             heard_parts.append(tail)
 
@@ -1302,7 +1302,7 @@ def listen_for_command(max_seconds=7, _retried=False):
             # chime tells sir to retry.
 
             print(
-                "[Shadow EARS] only noise heard; "
+                "[SHADOW EARS] only noise heard; "
                 "treating it as silence."
             )
 
@@ -1313,14 +1313,14 @@ def listen_for_command(max_seconds=7, _retried=False):
 
     except queue.Empty:
         print(
-            "[Shadow EARS] Microphone was quiet. "
+            "[SHADOW EARS] Microphone was quiet. "
             "Try speaking a bit louder."
         )
 
         _reset_stream()
 
     except Exception as error:
-        print(f"[Shadow EARS] Listening error: {error}")
+        print(f"[SHADOW EARS] Listening error: {error}")
 
         _reset_stream()
 
@@ -1340,7 +1340,7 @@ def listen_for_command(max_seconds=7, _retried=False):
 
     if not spoken and not _retried and not got_audio:
         print(
-            "[Shadow EARS] No audio at all; "
+            "[SHADOW EARS] No audio at all; "
             "rebuilding the microphone..."
         )
 
@@ -1353,7 +1353,7 @@ def listen_for_command(max_seconds=7, _retried=False):
 
     if not spoken and not _retried:
         print(
-            "[Shadow EARS] Audio but no clear words; "
+            "[SHADOW EARS] Audio but no clear words; "
             "keeping the warm stream."
         )
 
@@ -1362,7 +1362,7 @@ def listen_for_command(max_seconds=7, _retried=False):
 
 def flush_audio_queue():
     # Drop everything the microphone already
-    # heard. Used after Shadow speaks so he
+    # heard. Used after SHADOW speaks so he
     # cannot wake himself up with his own
     # voice.
 
@@ -1505,7 +1505,7 @@ def _rehear_history(seconds=4.0):
     # few seconds of buffered audio with the
     # FULL vocabulary (no grammar). The wake
     # grammar only knows his names, so the
-    # command in "Shadow what time is it"
+    # command in "SHADOW what time is it"
     # arrives there as "[unk]" - this pass
     # hears the real words. Returns
     # (name_found, command).
@@ -1548,18 +1548,18 @@ def _rehear_history(seconds=4.0):
     # DEBUG EVIDENCE: dump the exact audio the
     # re-hear pass receives, so a garbled
     # decode can be listened to afterwards.
-    # Opt-in only (set Shadow_DEBUG_PROBE=1):
+    # Opt-in only (set SHADOW_DEBUG_PROBE=1):
     # rewriting a WAV on every probe meant
     # disk churn on every wake word for a
     # diagnosis that is already closed.
 
-    if os.environ.get("Shadow_DEBUG_PROBE"):
+    if os.environ.get("SHADOW_DEBUG_PROBE"):
 
         try:
             import wave as wave_module
 
             with wave_module.open(
-                "Shadow_probe.wav",
+                "shadow_probe.wav",
                 "wb",
             ) as wav_file:
                 wav_file.setnchannels(1)
@@ -1621,7 +1621,7 @@ def _rehear_history(seconds=4.0):
         return False, ""
 
     print(
-        "[Shadow EARS] full-vocab re-hear: "
+        "[SHADOW EARS] full-vocab re-hear: "
         f"{rehear_text}"
     )
 
@@ -1799,7 +1799,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
                 if name_found:
                     print(
-                        "[Shadow EARS] wake word recovered "
+                        "[SHADOW EARS] wake word recovered "
                         "by the second-chance net."
                     )
 
@@ -1823,10 +1823,10 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                 # Show finished phrases as well, so
                 # the log reveals exactly what the
                 # recognizer guesses for the wake
-                # word (sir says Shadow, the model
+                # word (sir says SHADOW, the model
                 # may write something else).
 
-                print(f"[Shadow EARS] final: {text}")
+                print(f"[SHADOW EARS] final: {text}")
 
                 found, rest = strip_wake_word(text)
 
@@ -1868,7 +1868,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                 # never matching "Shadow").
 
                 if partial != last_partial:
-                    print(f"[Shadow EARS] heard: {partial}")
+                    print(f"[SHADOW EARS] heard: {partial}")
 
                     last_partial = partial
 
@@ -1911,7 +1911,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
                     and _is_bare_address(lowered_partial)
                 ):
                     print(
-                        "[Shadow EARS] address without a "
+                        "[SHADOW EARS] address without a "
                         "clear name - assuming sir, "
                         "waiting for the command."
                     )
@@ -1936,7 +1936,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
         window_peak = window_peak_rms
 
         print(
-            "[Shadow EARS] window loudness: "
+            "[SHADOW EARS] window loudness: "
             f"{int(window_peak)}"
         )
 
@@ -1968,7 +1968,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
         # SECOND-CHANCE NET: loud audio but the
         # grammar matched nothing at all. 2026-09-25:
-        # a fast loud "Shadow what time is it" can
+        # a fast loud "SHADOW what time is it" can
         # decode to nothing in the name-only
         # grammar. Re-hear the buffer with the
         # full vocabulary and look for the name
@@ -1981,7 +1981,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
             if name_found:
                 print(
-                    "[Shadow EARS] wake word recovered "
+                    "[SHADOW EARS] wake word recovered "
                     "by the second-chance net."
                 )
 
@@ -2000,7 +2000,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
         if not got_audio and not _retried:
             print(
-                "[Shadow EARS] No audio at all; "
+                "[SHADOW EARS] No audio at all; "
                 "rebuilding the microphone..."
             )
 
@@ -2015,7 +2015,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
 
     except queue.Empty:
         print(
-            "[Shadow EARS] Microphone was quiet. "
+            "[SHADOW EARS] Microphone was quiet. "
             "Try speaking a bit louder."
         )
 
@@ -2032,7 +2032,7 @@ def listen_for_wake_word(max_seconds=30, _retried=False):
         return False, ""
 
     except Exception as error:
-        print(f"[Shadow EARS] Listening error: {error}")
+        print(f"[SHADOW EARS] Listening error: {error}")
 
         wake_recognizer = None
 
@@ -2062,7 +2062,7 @@ def close_stt():
 
 
 if __name__ == "__main__":
-    print("Shadow WAKE WORD TEST")
+    print("SHADOW WAKE WORD TEST")
     print("-" * 40)
     print("Say 'Shadow' followed by a command.")
     print("Example: Shadow, what can you do")

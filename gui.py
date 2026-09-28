@@ -7,11 +7,11 @@ from tkinter import font as tkfont
 sys.stdout.reconfigure(errors="replace")
 sys.stderr.reconfigure(errors="replace")
 
-# The brain. Importing Shadow loads memory,
+# The brain. Importing shadow loads memory,
 # settings, and the voice stack exactly like
 # the terminal version does.
 
-import Shadow
+import shadow
 from voice_output import stop_speech, set_muted, play_ear_cone
 
 # ---------------- LOOK ----------------
@@ -85,7 +85,7 @@ class ShadowGUI:
     def _build_window(self):
         root = self.root
 
-        root.title("Shadow - Personal AI Companion")
+        root.title("SHADOW - Personal AI Companion")
         root.geometry("820x640")
         root.minsize(600, 480)
         root.configure(bg=BG)
@@ -179,7 +179,7 @@ class ShadowGUI:
         self.chat.grid(row=1, column=0, sticky="nsew")
 
         self.chat.tag_configure(
-            "Shadow",
+            "shadow",
             foreground=TEXT,
             font=self.font_body,
         )
@@ -335,7 +335,7 @@ class ShadowGUI:
         # the normal font.
 
         needs_mono = (
-            tag == "Shadow"
+            tag == "shadow"
             and "█" in text
         )
 
@@ -389,7 +389,7 @@ class ShadowGUI:
     # ---------------- WORKERS ----------------
 
     def _startup_worker(self):
-        if Shadow.check_ollama_status():
+        if shadow.check_ollama_status():
             self._update_status("Ready", STATUS_ONLINE)
         else:
             self._update_status("Ollama offline", STATUS_OFFLINE)
@@ -400,16 +400,16 @@ class ShadowGUI:
                 "system",
             )
 
-        user_name = Shadow.memory_manager.get_user_name()
+        user_name = shadow.memory_manager.get_user_name()
 
         if user_name:
-            greeting = f"Shadow online. Hello, {user_name} sir."
+            greeting = f"SHADOW online. Hello, {user_name} sir."
         else:
-            greeting = "Shadow online. Hello sir."
+            greeting = "SHADOW online. Hello sir."
 
-        self._append_chat(greeting, "Shadow")
+        self._append_chat(greeting, "shadow")
 
-        if Shadow.voice_enabled:
+        if shadow.voice_enabled:
             self._request_ears_warmup()
 
     def _request_ears_warmup(self):
@@ -423,7 +423,7 @@ class ShadowGUI:
 
         def warm():
             try:
-                ok = Shadow.setup_stt()
+                ok = shadow.setup_stt()
             except Exception:
                 ok = False
 
@@ -454,7 +454,7 @@ class ShadowGUI:
 
         def listen():
             try:
-                heard = Shadow.listen_for_command(7)
+                heard = shadow.listen_for_command(7)
             except Exception:
                 heard = ""
 
@@ -549,14 +549,14 @@ class ShadowGUI:
         # goes through _post / _append_chat.
 
         try:
-            reply = Shadow.get_response(text)
+            reply = shadow.get_response(text)
 
             if self.closing.is_set():
                 return
 
             spoken = (
-                Shadow.reply_already_spoken
-                and Shadow.voice_enabled
+                shadow.reply_already_spoken
+                and shadow.voice_enabled
             )
 
             self._post(self._show_reply, reply, spoken)
@@ -573,9 +573,9 @@ class ShadowGUI:
         # Main thread: display the reply and free
         # the UI for the next message.
 
-        tag = "err" if error else "Shadow"
+        tag = "err" if error else "shadow"
 
-        self._append_chat("Shadow: " + reply, tag)
+        self._append_chat("SHADOW: " + reply, tag)
 
         if spoken:
             self._append_chat(
@@ -651,14 +651,14 @@ class ShadowGUI:
         self.wake_mode = True
         set_muted(False)
         self._set_busy_ui(True)
-        self._update_status("Say 'Shadow'...", STATUS_LISTENING)
+        self._update_status("Say 'SHADOW'...", STATUS_LISTENING)
         self.voice_chat_button.config(
             text="⏹ Stop voice chat"
         )
 
         self._append_chat(
-            "Wake word monitor ON. Say 'Shadow' and then "
-            "your command, or just 'Shadow' and wait for "
+            "Wake word monitor ON. Say 'SHADOW' and then "
+            "your command, or just 'SHADOW' and wait for "
             "the beep. Say 'stop listening' to turn it off.",
             "system",
         )
@@ -670,7 +670,7 @@ class ShadowGUI:
         self.wake_thread.start()
 
     def _wake_worker(self):
-        if not Shadow.setup_stt():
+        if not shadow.setup_stt():
             self._post(
                 self._append_chat,
                 "I could not open the microphone, sir.",
@@ -692,7 +692,7 @@ class ShadowGUI:
                 time.sleep(0.3)
                 continue
 
-            found, command = Shadow.listen_for_wake_word(10)
+            found, command = shadow.listen_for_wake_word(10)
 
             if self.closing.is_set() or not self.wake_mode:
                 return
@@ -706,16 +706,16 @@ class ShadowGUI:
                 else:
                     # Bare wake word: ask for the command.
 
-                    Shadow.speak("Yes sir?")
-                    Shadow.wait_until_speech_done()
-                    Shadow.flush_audio_queue()
+                    shadow.speak("Yes sir?")
+                    shadow.wait_until_speech_done()
+                    shadow.flush_audio_queue()
 
                     self._update_status(
                         "Listening... (speak now)",
                         STATUS_LISTENING,
                     )
 
-                    heard = Shadow.listen_for_command(7)
+                    heard = shadow.listen_for_command(7)
 
                     if not heard:
                         # Same subtle signal as autostart
@@ -779,7 +779,7 @@ class ShadowGUI:
         self.wake_mode = False
 
         try:
-            Shadow.close_stt()
+            shadow.close_stt()
         except Exception:
             pass
 

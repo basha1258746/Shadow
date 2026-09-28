@@ -28,7 +28,7 @@ except ImportError:
 #
 # 2. CONFIRMATION GATE. Parsed actions are
 #    never executed directly - they are staged
-#    in Shadow.py and only run after the user
+#    in shadow.py and only run after the user
 #    explicitly says yes.
 #
 # 3. FAILSAFE. pyautogui's corner slam aborts
@@ -355,7 +355,7 @@ def execute_action(action):
 
 
 if __name__ == "__main__":
-    print("Shadow COMPUTER CONTROL PARSER TEST")
+    print("SHADOW COMPUTER CONTROL PARSER TEST")
     print("-" * 40)
 
     tests = (

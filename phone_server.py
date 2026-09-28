@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ---------------- PHONE ACCESS OVER LAN ----------------
 #
-# A tiny web server inside Shadow. Open the URL
+# A tiny web server inside SHADOW. Open the URL
 # on your phone (same Wi-Fi), enter the PIN once,
 # and chat with him from the sofa.
 #
@@ -45,7 +45,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Shadow</title>
+<title>SHADOW</title>
 <style>
   body { background:#0d1117; color:#e6edf3; font-family:Segoe UI, sans-serif;
          margin:0; display:flex; flex-direction:column; height:100vh; }
@@ -55,7 +55,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   .msg { margin:8px 0; padding:10px 12px; border-radius:10px;
          max-width:85%; white-space:pre-wrap; }
   .user { background:#1f6feb; color:white; margin-left:auto; }
-  .Shadow { background:#161b22; border:1px solid #30363d; }
+  .shadow { background:#161b22; border:1px solid #30363d; }
   .sys { color:#8b949e; font-size:0.85em; text-align:center; }
   form { display:flex; gap:8px; padding:10px; background:#161b22;
          border-top:1px solid #30363d; }
@@ -71,14 +71,14 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <div id="pinbox">
-  <div>Enter Shadow PIN (see the laptop console)</div>
+  <div>Enter SHADOW PIN (see the laptop console)</div>
   <input id="pin" type="password" inputmode="numeric" maxlength="6">
   <button onclick="savePin()">Enter</button>
 </div>
-<header>Shadow - Personal AI Companion</header>
+<header>SHADOW - Personal AI Companion</header>
 <div id="chat"></div>
 <form onsubmit="return sendMsg()">
-  <input id="box" type="text" autocomplete="off" placeholder="Talk to Shadow...">
+  <input id="box" type="text" autocomplete="off" placeholder="Talk to SHADOW...">
   <button type="button" onclick="toggleSpeak()" id="spk">🔇</button>
   <button type="submit">Send</button>
 </form>
@@ -87,7 +87,7 @@ let speakOn = false;
 let lastRendered = 0;
 
 function savePin() {
-  localStorage.setItem('Shadow_pin', document.getElementById('pin').value);
+  localStorage.setItem('shadow_pin', document.getElementById('pin').value);
   document.getElementById('pinbox').style.display = 'none';
   poll();
 }
@@ -98,10 +98,10 @@ function toggleSpeak() {
 }
 
 async function api(path, body) {
-  const pin = localStorage.getItem('Shadow_pin') || '';
+  const pin = localStorage.getItem('shadow_pin') || '';
   const res = await fetch(path, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json', 'X-Shadow-PIN': pin},
+    headers: {'Content-Type': 'application/json', 'X-SHADOW-PIN': pin},
     body: JSON.stringify(body || {})
   });
   if (res.status === 401) {
@@ -118,7 +118,7 @@ function addMsg(text, cls) {
   div.textContent = text;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
-  if (cls === 'Shadow' && speakOn && 'speechSynthesis' in window) {
+  if (cls === 'shadow' && speakOn && 'speechSynthesis' in window) {
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05;
     speechSynthesis.speak(u);
@@ -139,10 +139,10 @@ async function sendMsg() {
   // stream error.
 
   try {
-    const pin = localStorage.getItem('Shadow_pin') || '';
+    const pin = localStorage.getItem('shadow_pin') || '';
     const res = await fetch('/api/chat/stream', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-Shadow-PIN': pin},
+      headers: {'Content-Type': 'application/json', 'X-SHADOW-PIN': pin},
       body: JSON.stringify({text: text})
     });
     if (res.status === 401) {
@@ -151,7 +151,7 @@ async function sendMsg() {
     }
     const chat = document.getElementById('chat');
     const live = document.createElement('div');
-    live.className = 'msg Shadow';
+    live.className = 'msg shadow';
     live.textContent = '...';
     chat.appendChild(live);
     chat.scrollTop = chat.scrollHeight;
@@ -196,7 +196,7 @@ async function sendMsg() {
     try {
       const data = await api('/api/message', {text: text});
       document.getElementById('chat').lastChild.remove();
-      addMsg(data.reply || '(empty reply)', 'Shadow');
+      addMsg(data.reply || '(empty reply)', 'shadow');
       poll();
     } catch (e2) {
       const chat = document.getElementById('chat');
@@ -221,7 +221,7 @@ async function poll() {
 
 setInterval(poll, 5000);
 
-if (localStorage.getItem('Shadow_pin')) {
+if (localStorage.getItem('shadow_pin')) {
   document.getElementById('pinbox').style.display = 'none';
   poll();
 }
@@ -421,7 +421,7 @@ class PhoneHandler(BaseHTTPRequestHandler):
 
     def _pin_ok(self):
         supplied = self.headers.get(
-            "X-Shadow-PIN", ""
+            "X-SHADOW-PIN", ""
         )
 
         return (
@@ -432,7 +432,7 @@ class PhoneHandler(BaseHTTPRequestHandler):
     def _chat_stream(self, data):
         # Live chat for the phone: the same
         # sentence-sink pattern as the dashboard
-        # (Shadow.chat_streaming_to_dashboard),
+        # (shadow.chat_streaming_to_dashboard),
         # PIN-gated. JSON lines: {piece}, ...,
         # then {done: true, reply: full}. The
         # phone speaks pieces itself via browser
@@ -481,10 +481,10 @@ class PhoneHandler(BaseHTTPRequestHandler):
                 pass
 
         with brain_lock:
-            import Shadow
+            import shadow
 
             reply = (
-                Shadow
+                shadow
                 .chat_streaming_to_dashboard(
                     text, on_piece
                 )
@@ -495,7 +495,7 @@ class PhoneHandler(BaseHTTPRequestHandler):
             )
 
             history.append(
-                {"who": "Shadow",
+                {"who": "shadow",
                  "text": reply}
             )
 
@@ -592,9 +592,9 @@ class PhoneHandler(BaseHTTPRequestHandler):
             # One brain at a time.
 
             with brain_lock:
-                import Shadow
+                import shadow
 
-                reply = Shadow.get_response(text)
+                reply = shadow.get_response(text)
 
                 who = "user"
 
@@ -603,7 +603,7 @@ class PhoneHandler(BaseHTTPRequestHandler):
                 )
 
                 history.append(
-                    {"who": "Shadow", "text": reply}
+                    {"who": "shadow", "text": reply}
                 )
 
                 del history[:-40]
@@ -662,15 +662,15 @@ def start_server():
 
     server_thread.start()
 
-    print("[Shadow PHONE] Phone access is ON.")
+    print("[SHADOW PHONE] Phone access is ON.")
 
     for ip in get_lan_ips():
         print(
-            f"[Shadow PHONE]   http://{ip}:{SERVER_PORT}"
+            f"[SHADOW PHONE]   http://{ip}:{SERVER_PORT}"
         )
 
     print(
-        f"[Shadow PHONE]   PIN: {pin_code}"
+        f"[SHADOW PHONE]   PIN: {pin_code}"
     )
 
     return get_status_text()

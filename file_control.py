@@ -6,7 +6,7 @@ FOLDERS = {
     "desktop": os.path.join(os.path.expanduser("~"), "Desktop"),
     "documents": os.path.join(os.path.expanduser("~"), "Documents"),
     "downloads": os.path.join(os.path.expanduser("~"), "Downloads"),
-    "Shadow": r"C:\Users\us448\Shadow",
+    "shadow": r"C:\Users\us448\SHADOW",
 }
 
 
@@ -72,7 +72,7 @@ def list_folder(folder_name):
 
 if __name__ == "__main__":
 
-    print("Shadow FILE CONTROL")
+    print("SHADOW FILE CONTROL")
     print("-" * 40)
 
     success, message = open_folder("downloads")

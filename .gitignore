@@ -14,12 +14,12 @@ backups/
 .freebuff/
 
 # Old debug leftovers
-Shadow_debug.py
-python Shadow_debug.py
+shadow_debug.py
+python shadow_debug.py
 
 # Runtime diagnostics log
 Shadow.log
-Shadow.log
+shadow.log
 
 # Self-update state (changelog of the last pull)
 last_update.json
@@ -32,6 +32,15 @@ training/*.log
 # Chief's reminders are private
 reminders.json
 
+# Chief's memory and personal settings are
+# private - they live on his laptop only
+# (memory.json / settings.json were once
+# tracked; they are scrubbed from history
+# for the public release)
+memory.json
+settings.json
+secrets.json
+
 # Test scratch files
 # scratch stores live in tests/ and are
 # deleted by the suite; ignore any escapees
@@ -41,4 +50,4 @@ tests/_s*.json
 
 # Re-hear probe evidence
 Shadow_probe.wav
-Shadow_probe.wav
+shadow_probe.wav

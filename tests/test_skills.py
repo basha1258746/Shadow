@@ -9,7 +9,7 @@ sys.path.insert(
     ),
 )
 
-import Shadow_skills
+import shadow_skills
 
 # A unique name: the real skills folder
 # ships battery/wifi/timetable, and the
@@ -27,7 +27,7 @@ SAMPLE = {
 
 def write_skill(data, filename):
     path = os.path.join(
-        Shadow_skills.SKILLS_DIR, filename
+        shadow_skills.SKILLS_DIR, filename
     )
 
     with open(
@@ -42,7 +42,7 @@ def test_load_and_match():
 
     try:
         skills, errors = (
-            Shadow_skills.load_all_skills()
+            shadow_skills.load_all_skills()
         )
 
         assert not errors, errors
@@ -54,7 +54,7 @@ def test_load_and_match():
 
         assert watches, "sample skill lost"
 
-        reply = Shadow_skills.try_skill(
+        reply = shadow_skills.try_skill(
             "wristwatch"
         )
 
@@ -68,7 +68,7 @@ def test_load_and_match():
 
 def test_broken_file_isolated():
     path = os.path.join(
-        Shadow_skills.SKILLS_DIR, "t_b.json"
+        shadow_skills.SKILLS_DIR, "t_b.json"
     )
 
     with open(path, "w") as f:
@@ -76,7 +76,7 @@ def test_broken_file_isolated():
 
     try:
         skills, errors = (
-            Shadow_skills.load_all_skills()
+            shadow_skills.load_all_skills()
         )
 
         assert errors, (
@@ -96,7 +96,7 @@ def test_broken_file_isolated():
 
 
 def test_injection_refused():
-    out, error = Shadow_skills._run_step(
+    out, error = shadow_skills._run_step(
         'powershell -Command "echo pwned"'
     )
 
@@ -106,7 +106,7 @@ def test_injection_refused():
 
 
 def test_pipe_refused():
-    out, error = Shadow_skills._run_step(
+    out, error = shadow_skills._run_step(
         "dir | more"
     )
 
@@ -123,7 +123,7 @@ def test_faint_match_ignored():
         # sentence must NOT trigger.
 
         assert (
-            Shadow_skills.try_skill(
+            shadow_skills.try_skill(
                 "tell me a joke about my wristwatch collection"
             )
             is None
@@ -137,7 +137,7 @@ def test_prefix_match_fires():
     path = write_skill(SAMPLE, "t_d.json")
 
     try:
-        reply = Shadow_skills.try_skill(
+        reply = shadow_skills.try_skill(
             "wristwatch status now"
         )
 

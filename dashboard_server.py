@@ -191,10 +191,10 @@ class _noop:
 
 
 def _gather_skills():
-    import Shadow_skills
+    import shadow_skills
 
     skills, errors = (
-        Shadow_skills.load_all_skills()
+        shadow_skills.load_all_skills()
     )
 
     return {
@@ -210,7 +210,7 @@ def _gather_skills():
 
 def _gather_last_heard(limit=8):
     # His most recent transcriptions, parsed
-    # from Shadow.log's current session.
+    # from shadow.log's current session.
 
     import os
 
@@ -218,7 +218,7 @@ def _gather_last_heard(limit=8):
         os.path.dirname(
             os.path.abspath(__file__)
         ),
-        "Shadow.log",
+        "shadow.log",
     )
 
     heard = []
@@ -238,7 +238,7 @@ def _gather_last_heard(limit=8):
                     )
 
                 elif line.startswith(
-                        "[Shadow EARS] command part: "
+                        "[SHADOW EARS] command part: "
                 ):
                     heard.append(
                         "(part) "
@@ -280,7 +280,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="30">
-<title>Shadow - Dashboard</title>
+<title>SHADOW - Dashboard</title>
 <style>
   body { background:#0d1117; color:#e6edf3;
          font-family:Segoe UI, sans-serif; margin:0; }
@@ -308,7 +308,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   .msg { margin:4px 0; padding:6px 10px; border-radius:8px;
          max-width:80%; white-space:pre-wrap; }
   .user { background:#1f6feb; color:#fff; margin-left:auto; }
-  .Shadow { background:#161b22; border:1px solid #30363d; }
+  .shadow { background:#161b22; border:1px solid #30363d; }
   form { display:flex; gap:8px; }
   input[type=text] { flex:1; background:#21262d; color:#e6edf3;
                      border:1px solid #30363d; border-radius:6px;
@@ -325,7 +325,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <span>Shadow &mdash; Dashboard</span>
+  <span>SHADOW &mdash; Dashboard</span>
   <span id="dot" class="bad">checking&hellip;</span>
 </header>
 <div id="grid">
@@ -347,7 +347,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   <div class="card" id="chatbox"><h2>Chat (goes through his real brain)</h2>
     <div id="chat"></div>
     <form onsubmit="return sendMsg()">
-      <input type="text" id="entry" placeholder="Talk to Shadow..."
+      <input type="text" id="entry" placeholder="Talk to SHADOW..."
              autocomplete="off">
       <button>Send</button>
     </form>
@@ -432,7 +432,7 @@ function sendMsg(){
 
   const chat=document.getElementById('chat');
   const live=document.createElement('div');
-  live.className='msg Shadow';
+  live.className='msg shadow';
   live.textContent='\u2026';
   chat.appendChild(live);
   chat.scrollTop=chat.scrollHeight;
@@ -539,7 +539,7 @@ document.getElementById('entry').focus();
 
 class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, *args):
-        # Keep the dashboard out of Shadow.log.
+        # Keep the dashboard out of shadow.log.
 
         pass
 
@@ -575,15 +575,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
 
         with brain_lock:
-            import Shadow
+            import shadow
 
-            reply = Shadow.get_response(text)
+            reply = shadow.get_response(text)
 
             history.append(
                 {"who": "user", "text": text})
 
             history.append(
-                {"who": "Shadow",
+                {"who": "shadow",
                  "text": reply})
 
             del history[:-40]
@@ -746,10 +746,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 pass
 
         with brain_lock:
-            import Shadow
+            import shadow
 
             reply = (
-                Shadow
+                shadow
                 .chat_streaming_to_dashboard(
                     text, on_piece)
             )
@@ -758,7 +758,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 {"who": "user", "text": text})
 
             history.append(
-                {"who": "Shadow",
+                {"who": "shadow",
                  "text": reply})
 
             del history[:-40]
@@ -944,7 +944,7 @@ def start_server():
     server_thread.start()
 
     print(
-        "[Shadow DASHBOARD] ON - "
+        "[SHADOW DASHBOARD] ON - "
         f"http://localhost:{SERVER_PORT}"
     )
 

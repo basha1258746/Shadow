@@ -79,22 +79,22 @@ def find_tesseract_path():
 
 def setup_ocr():
     if pytesseract is None:
-        print("[Shadow OCR] pytesseract is not installed.")
+        print("[SHADOW OCR] pytesseract is not installed.")
         return False
     
     if Image is None:
-        print("[Shadow OCR] Pillow is not installed.")
+        print("[SHADOW OCR] Pillow is not installed.")
         return False
     
     tesseract_path = find_tesseract_path()
     
     if not tesseract_path:
-        print("[Shadow OCR] Tesseract executable was not found.")
+        print("[SHADOW OCR] Tesseract executable was not found.")
         return False
     
     pytesseract.pytesseract.tesseract_cmd = tesseract_path
     
-    print(f"[Shadow OCR] Tesseract: {tesseract_path}")
+    print(f"[SHADOW OCR] Tesseract: {tesseract_path}")
     
     return True
 
@@ -143,7 +143,7 @@ def ocr_image_safe(image):
         ).strip()
 
     except Exception as error:
-        print(f"[Shadow OCR] Safe OCR failed: {error}")
+        print(f"[SHADOW OCR] Safe OCR failed: {error}")
         return ""
 
     finally:
@@ -189,7 +189,7 @@ def read_text_file(path):
 def perform_ocr(page, page_number):
     try:
         print(
-            f"[Shadow OCR] Scanned page detected. "
+            f"[SHADOW OCR] Scanned page detected. "
             f"Running OCR on page {page_number}..."
         )
         
@@ -212,14 +212,14 @@ def perform_ocr(page, page_number):
         text = text.strip()
         
         print(
-            f"[Shadow OCR] Page {page_number}: "
+            f"[SHADOW OCR] Page {page_number}: "
             f"{len(text)} characters extracted."
         )
         
         return text
     except Exception as error:
         print(
-            f"[Shadow OCR] Error on page "
+            f"[SHADOW OCR] Error on page "
             f"{page_number}: {error}"
         )
         return ""
@@ -241,7 +241,7 @@ def read_pdf_file(path):
     total_pages = len(document)
     
     print(
-        f"[Shadow PDF] PDF opened successfully. "
+        f"[SHADOW PDF] PDF opened successfully. "
         f"Pages: {total_pages}"
     )
     
@@ -253,7 +253,7 @@ def read_pdf_file(path):
         page_number = page_index + 1
         
         print(
-            f"[Shadow PDF] Processing page "
+            f"[SHADOW PDF] Processing page "
             f"{page_number}/{total_pages}..."
         )
         
@@ -266,7 +266,7 @@ def read_pdf_file(path):
         
         if len(normal_text) >= 100:
             print(
-                f"[Shadow PDF] Normal text found on "
+                f"[SHADOW PDF] Normal text found on "
                 f"page {page_number}: "
                 f"{len(normal_text)} characters."
             )
@@ -298,14 +298,14 @@ def read_pdf_file(path):
     
     if not extracted_pages:
         print(
-            "[Shadow PDF] No readable text was found."
+            "[SHADOW PDF] No readable text was found."
         )
         return None
     
     final_text = "\n\n".join(extracted_pages)
     
     print(
-        f"[Shadow PDF] Total extracted characters: "
+        f"[SHADOW PDF] Total extracted characters: "
         f"{len(final_text)}"
     )
     
@@ -427,7 +427,7 @@ def search_chunks(chunks, query, max_results=3):
 
 
 if __name__ == "__main__":
-    print("Shadow DOCUMENT SEARCH TEST")
+    print("SHADOW DOCUMENT SEARCH TEST")
     
     path = input(
         "Enter PDF/TXT/MD file path: "

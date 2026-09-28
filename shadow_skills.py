@@ -1,9 +1,9 @@
 import json
 import os
 
-# ---------------- Shadow SKILLS ----------------
+# ---------------- SHADOW SKILLS ----------------
 #
-# Borrowed from Stanford's OpenShadow (their
+# Borrowed from Stanford's __OPENSHADOW__ (their
 # "skills" idea): instead of hard-coding every
 # command deep inside get_response, sir can
 # drop a small JSON file into skills/ and he

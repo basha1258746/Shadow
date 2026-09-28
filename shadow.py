@@ -23,8 +23,8 @@ if sys.stderr is not None:
     sys.stderr.reconfigure(errors="replace")
 
 class _LogTee:
-    # Everything Shadow prints also lands in
-    # Shadow.log, so silent autostart mode
+    # Everything SHADOW prints also lands in
+    # shadow.log, so silent autostart mode
     # (pythonw has no console at all) can
     # always be diagnosed afterwards.
 
@@ -93,13 +93,13 @@ def setup_logging():
     # Under pythonw (the autostart launcher)
     # stdout and stderr are None: every print
     # and every crash traceback vanishes into
-    # thin air. Mirror both into Shadow.log next
-    # to Shadow.py so a silent failure can be
+    # thin air. Mirror both into shadow.log next
+    # to shadow.py so a silent failure can be
     # seen the moment it happens.
 
     log_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        "Shadow.log",
+        "shadow.log",
     )
 
     sys.stdout = _LogTee(log_path, sys.stdout)
@@ -191,20 +191,31 @@ from voice_input import (
 )
 
 # After every spoken sentence, drop the
-# microphone audio so Shadow never mistakes
+# microphone audio so SHADOW never mistakes
 # his own voice for the user's.
 
 set_after_sentence_hook(flush_audio_queue)
 import backup
 
-MODEL = "Shadow"
-OLLAMA_URL = "http://localhost:11434/api/chat"
+MODEL = "shadow"
+OLLAMA_URL = "http://localhost:11434" + "/api/chat"
+
+# The cloud brain: NVIDIA Nemotron on Nebius
+# Token Factory. OFF by default - sir opts in
+# with 'nebius on'. Local Ollama is always the
+# fallback when the wire fails; the import
+# lives inside chat() to keep startup light.
+
+NEBIUS_FALLBACK_NOTE = (
+    "[SHADOW] Cloud brain unavailable - "
+    "using the local brain."
+)
 MEMORY_FILE = "memory.json"
 MAX_HISTORY = 12
 VOICE_ENABLED = True
 
 # Skill loader state (drop-in commands from
-# skills/, borrowed from OpenShadow). Load
+# skills/, borrowed from __OPENSHADOW__). Load
 # once per process; errors are kept so
 # 'my skills' can report broken files
 # instead of silently ignoring them.
@@ -298,7 +309,7 @@ def remember_project_note(text):
         return (
             "Tell me what to remember about the "
             "project, sir. Like: remember project "
-            "Shadow: added voice input"
+            "shadow: added voice input"
         )
 
     memory_manager.add_project_note(project, note)
@@ -315,7 +326,7 @@ def show_project_memory(text):
         if not names:
             return (
                 "No project memories yet, sir. Add one "
-                "with: remember project Shadow: added "
+                "with: remember project shadow: added "
                 "voice today"
             )
 
@@ -341,7 +352,7 @@ def show_project_memory(text):
 
 
 def knowledge_report():
-    print("[Shadow TOOL: Collecting everything I know...]")
+    print("[SHADOW TOOL: Collecting everything I know...]")
 
     return memory_manager.knowledge_report_text()
 
@@ -628,14 +639,13 @@ def ask_ollama_streaming(messages, on_sentence):
 
 def build_system_prompt():
     prompt = (
-        "You are Shadow, the user's personal AI "
+        "You are SHADOW, the user's personal AI "
         "butler running locally on his Windows "
-        "laptop - in the tradition of the Shadow "
-        "from the Iron Man films. Your engine is a "
-        "local model, but your identity is Shadow. "
-        "You are not Qwen, Alibaba, ChatGPT or any "
-        "other product. If asked who you are, say "
-        "you are Shadow.\n\n"
+        "laptop. Your engine is a local model, "
+        "but your identity is SHADOW. You are "
+        "not Qwen, Alibaba, ChatGPT or any other "
+        "product. If asked who you are, say you "
+        "are SHADOW.\n\n"
         "PERSONALITY: You are a refined British "
         "gentleman-butler with dry wit: calm, "
         "precise, unflappably loyal and quietly "
@@ -794,6 +804,64 @@ def chat(user_text):
             speak(sentence)
             spoken_count["value"] += 1
 
+    # ---- CLOUD BRAIN ATTEMPT ----
+    # Nemotron on Nebius Token Factory, when
+    # sir has opted in. Same sentence-sink as
+    # the local brain: sentences reach the
+    # speakers or the dashboard as they
+    # arrive. Any failure returns None and we
+    # fall through to Ollama - he is never
+    # mute because the wire is down. The
+    # import is local: he boots with zero
+    # cloud dependencies.
+
+    nebius_answer = None
+
+    try:
+        import nebius_brain
+
+        if nebius_brain.enabled():
+            nebius_answer = (
+                nebius_brain.ask_nebius_streaming(
+                    messages,
+                    on_sentence=on_sentence,
+                )
+            )
+
+            if nebius_answer is None:
+                print(NEBIUS_FALLBACK_NOTE)
+
+    except Exception as error:
+        print(f"[SHADOW] Cloud brain error: {error}")
+
+        nebius_answer = None
+
+    if nebius_answer is not None:
+        answer = nebius_answer.strip() or "..."
+
+        reply_already_spoken = (
+            voice_enabled and spoken_count["value"] > 0
+        )
+
+        conversation_history.append({
+            "role": "user",
+            "content": user_text
+        })
+
+        conversation_history.append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        if len(conversation_history) > MAX_HISTORY:
+            conversation_history[:] = (
+                conversation_history[
+                    -MAX_HISTORY:
+                ]
+            )
+
+        return answer
+
     answer = ask_ollama_streaming(messages, on_sentence)
 
     if answer is None:
@@ -843,7 +911,7 @@ def chat(user_text):
 # ---------------- TOOLS ----------------
 
 def run_system_info_tool():
-    print("[Shadow TOOL: Reading system information...]")
+    print("[SHADOW TOOL: Reading system information...]")
 
     info = get_system_info()
 
@@ -903,7 +971,7 @@ def summarize_current_document():
         )
 
     document_prompt = f"""
-You are Shadow, a local AI assistant.
+You are SHADOW, a local AI assistant.
 
 The following text was extracted locally
 from a PDF document.
@@ -930,7 +998,7 @@ Summarize this document in simple language.
         {
             "role": "system",
             "content": (
-                "You are Shadow. "
+                "You are SHADOW. "
                 "Answer using only the "
                 "provided document. "
                 "Never invent facts."
@@ -968,7 +1036,7 @@ def run_document_tool(text):
         return "Please provide the PDF file path."
 
     print(
-        "[Shadow TOOL: Reading PDF...]"
+        "[SHADOW TOOL: Reading PDF...]"
     )
 
     document_text = read_document(
@@ -1010,13 +1078,13 @@ def run_document_tool(text):
     )
 
     print(
-        "[Shadow TOOL: "
+        "[SHADOW TOOL: "
         f"Created {len(current_document_chunks)} "
         "document chunk(s)...]"
     )
 
     print(
-        "[Shadow TOOL: "
+        "[SHADOW TOOL: "
         "Sending document to local AI...]"
     )
 
@@ -1059,14 +1127,14 @@ def answer_document_question(question):
     history_lines = []
 
     for entry in conversation_history[-4:]:
-        role = "User" if entry["role"] == "user" else "Shadow"
+        role = "User" if entry["role"] == "user" else "SHADOW"
 
         history_lines.append(f"{role}: {entry['content']}")
 
     recent_chat = "\n".join(history_lines)
 
     document_prompt = f"""
-You are Shadow.
+You are SHADOW.
 
 Answer the user's question using ONLY the
 document excerpts below.
@@ -1094,7 +1162,7 @@ Question: {question}
         {
             "role": "system",
             "content": (
-                "You are Shadow. "
+                "You are SHADOW. "
                 "Answer using only the "
                 "provided document. "
                 "Never invent facts."
@@ -1159,7 +1227,7 @@ def check_ollama_status():
 
 
 def _tray_exit():
-    # Tray menu 'Exit Shadow': stop everything
+    # Tray menu 'Exit SHADOW': stop everything
     # and end the process.
 
     import os
@@ -1216,7 +1284,7 @@ def _tray_show_qr():
 
     root = tk.Tk()
 
-    root.title("Shadow - Phone Connection")
+    root.title("SHADOW - Phone Connection")
 
     root.configure(bg="white")
 
@@ -1273,7 +1341,7 @@ def get_time_greeting():
 
 
 def morning_briefing():
-    print("[Shadow TOOL: Preparing your briefing...]")
+    print("[SHADOW TOOL: Preparing your briefing...]")
 
     user_name = memory_manager.get_user_name()
 
@@ -1359,7 +1427,7 @@ def speak_briefing():
 
     global reply_already_spoken
 
-    print("[Shadow TOOL: Reading your briefing aloud...]")
+    print("[SHADOW TOOL: Reading your briefing aloud...]")
 
     lines = morning_briefing().splitlines()
 
@@ -1445,14 +1513,14 @@ def maybe_morning_briefing():
         # same-day restart): stay silent.
 
         print(
-            "[Shadow] Morning briefing already "
+            "[SHADOW] Morning briefing already "
             "played today - skipping."
         )
 
         return False
 
     print(
-        "[Shadow] First boot of the day - "
+        "[SHADOW] First boot of the day - "
         "queuing the morning briefing."
     )
 
@@ -1517,7 +1585,7 @@ def summarize_window_text(text):
     limited = text[:2500]
 
     prompt = f"""
-You are Shadow.
+You are SHADOW.
 
 The text below was read from a window the
 user asked you to watch. It just changed.
@@ -1535,7 +1603,7 @@ WINDOW TEXT:
         {
             "role": "system",
             "content": (
-                "You are Shadow. Summarize the "
+                "You are SHADOW. Summarize the "
                 "window content in one short "
                 "sentence. Use only the provided "
                 "text."
@@ -1552,8 +1620,8 @@ WINDOW TEXT:
 
 
 def build_status_text():
-    # 'Shadow status' from the terminal: is the
-    # hidden autostart Shadow alive, is him
+    # 'shadow status' from the terminal: is the
+    # hidden autostart SHADOW alive, is him
     # brain online, when did he last hear
     # anything? He runs without a console,
     # so this is how sir checks on him.
@@ -1576,7 +1644,7 @@ def build_status_text():
         script = (
             "$p = Get-CimInstance Win32_Process | "
             "Where-Object { $_.Name -eq 'pythonw.exe' "
-            "-and $_.CommandLine -like '*Shadow.py*autostart*' } "
+            "-and $_.CommandLine -like '*shadow.py*autostart*' } "
             "| Select-Object -First 1; "
             "if ($p) { $p.ProcessId }"
         )
@@ -1602,11 +1670,11 @@ def build_status_text():
         pass
 
     if alive:
-        lines.append(f"Shadow: RUNNING (pid {pid})")
+        lines.append(f"SHADOW: RUNNING (pid {pid})")
 
     else:
         lines.append(
-            "Shadow: NOT RUNNING - say 'Shadow start' "
+            "SHADOW: NOT RUNNING - say 'shadow start' "
             "or reboot to wake him."
         )
 
@@ -1624,7 +1692,7 @@ def build_status_text():
 
     log_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        "Shadow.log",
+        "shadow.log",
     )
 
     session_start = 0
@@ -1699,23 +1767,23 @@ def build_status_text():
 
     lines.append("")
     lines.append(
-        "More: 'Shadow log' shows his last 40 log "
-        "lines ('Shadow log 100' for more)."
+        "More: 'shadow log' shows his last 40 log "
+        "lines ('shadow log 100' for more)."
     )
 
     return "\n".join(lines)
 
 
-def tail_Shadow_log(lines_to_show=40):
-    # 'Shadow log' - show the newest entries from
-    # Shadow.log so sir can check what he did
+def tail_shadow_log(lines_to_show=40):
+    # 'shadow log' - show the newest entries from
+    # shadow.log so sir can check what he did
     # (and what went wrong) without opening the
     # file. Only the current session matters:
     # older runs are skipped.
 
     log_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        "Shadow.log",
+        "shadow.log",
     )
 
     if not os.path.exists(log_path):
@@ -1751,7 +1819,7 @@ def tail_Shadow_log(lines_to_show=40):
         session_lines = session_lines[-lines_to_show:]
 
     header = (
-        f"[Shadow.log - last {len(session_lines)} "
+        f"[shadow.log - last {len(session_lines)} "
         "lines of this session]"
     )
 
@@ -1801,9 +1869,9 @@ def show_help():
         "- 'voice on' / 'voice off' - toggle speech\n"
         "- 'speak faster' / 'speak slower' / 'speak normal'\n"
         "- 'listen' - say one command out loud\n"
-        "- 'voice chat' - talk to Shadow hands-free\n"
-        "- 'Shadow log' - show what I have been up to\n"
-        "- from a terminal: 'Shadow status' checks my health\n"
+        "- 'voice chat' - talk to SHADOW hands-free\n"
+        "- 'shadow log' - show what I have been up to\n"
+        "- from a terminal: 'shadow status' checks my health\n"
         "- anything else - just talk to me"
     )
 
@@ -1838,7 +1906,7 @@ def get_response(text):
     # Remove a leading wake name if the user
     # addresses him directly.
 
-    if text_lower.startswith("Shadow"):
+    if text_lower.startswith("shadow"):
         text = text[6:].strip()
         text_lower = text.lower()
 
@@ -1865,10 +1933,10 @@ def get_response(text):
         _skill_cache["loaded"] = True
 
         try:
-            import Shadow_skills
+            import shadow_skills
 
             _skill_errors = (
-                Shadow_skills.load_all_skills()[1]
+                shadow_skills.load_all_skills()[1]
             )
 
         except Exception:
@@ -1878,9 +1946,9 @@ def get_response(text):
             ]
 
     try:
-        import Shadow_skills
+        import shadow_skills
 
-        skill_reply = Shadow_skills.try_skill(
+        skill_reply = shadow_skills.try_skill(
             text_lower
         )
 
@@ -2080,7 +2148,7 @@ def get_response(text):
         return show_help()
 
     if text_lower in (
-        "Shadow log",
+        "shadow log",
         "show log",
         "log",
     ):
@@ -2090,7 +2158,7 @@ def get_response(text):
 
         reply_already_spoken = True
 
-        return tail_Shadow_log()
+        return tail_shadow_log()
 
     # Auto-briefing switches: handled BEFORE the
     # 'good morning' prefix-catch below, which
@@ -2356,10 +2424,10 @@ def get_response(text):
         "show skills",
         "what are your skills",
     ):
-        import Shadow_skills
+        import shadow_skills
 
         listing = (
-            Shadow_skills.list_skills_text()
+            shadow_skills.list_skills_text()
         )
 
         if _skill_errors:
@@ -2553,6 +2621,97 @@ def get_response(text):
             "the older keyword matching."
         )
 
+    # ---------------- CLOUD BRAIN COMMANDS ----------------
+    # His second brain: NVIDIA Nemotron on
+    # Nebius Token Factory, opt-in like
+    # online mode and just as honest about
+    # its state.
+
+    if text_lower in (
+        "nebius on",
+        "cloud brain on",
+    ):
+        import nebius_brain
+
+        return nebius_brain.set_enabled(
+            True
+        )
+
+    if text_lower in (
+        "nebius off",
+        "cloud brain off",
+        "local brain",
+    ):
+        import nebius_brain
+
+        return nebius_brain.set_enabled(
+            False
+        )
+
+    if text_lower in (
+        "nebius status",
+        "cloud brain status",
+    ):
+        import nebius_brain
+
+        return nebius_brain.status_text()
+
+    if text_lower.startswith(
+            "set nebius key"):
+        import nebius_brain
+
+        return nebius_brain.set_key_text(
+            text[len("set nebius key"):]
+        )
+
+    if text_lower == "forget nebius key":
+        import nebius_brain
+
+        return nebius_brain.clear_key_text()
+
+    # ---------------- CLOUD BRAIN COMMANDS ----------------
+    # His second brain: NVIDIA Nemotron on
+    # Nebius Token Factory. Opt-in like
+    # online mode, and honest about its
+    # state.
+
+    if text_lower in (
+        "nebius on",
+        "cloud brain on",
+    ):
+        import nebius_brain
+
+        return nebius_brain.set_enabled(True)
+
+    if text_lower in (
+        "nebius off",
+        "cloud brain off",
+        "local brain",
+    ):
+        import nebius_brain
+
+        return nebius_brain.set_enabled(False)
+
+    if text_lower in (
+        "nebius status",
+        "cloud brain status",
+    ):
+        import nebius_brain
+
+        return nebius_brain.status_text()
+
+    if text_lower.startswith("set nebius key"):
+        import nebius_brain
+
+        return nebius_brain.set_key_text(
+            text[len("set nebius key"):]
+        )
+
+    if text_lower == "forget nebius key":
+        import nebius_brain
+
+        return nebius_brain.clear_key_text()
+
     # ---------------- ONLINE MODE ----------------
     # The gate: he only touches the internet
     # after an explicit 'online on' from sir.
@@ -2593,6 +2752,18 @@ def get_response(text):
         return (
             online_mode.online_status_text()
         )
+
+    if text_lower.startswith("set tavily key"):
+        import online_mode
+
+        return online_mode.set_tavily_key_text(
+            text[len("set tavily key"):]
+        )
+
+    if text_lower == "forget tavily key":
+        import online_mode
+
+        return online_mode.clear_tavily_key_text()
 
     if text_lower == "weather" or (
             text_lower.startswith("weather ")
@@ -2874,7 +3045,7 @@ def process_voice_command(heard):
 
     reply = get_response(heard)
 
-    print(f"Shadow: {reply}")
+    print(f"SHADOW: {reply}")
     print()
 
     # Let sentence-by-sentence speech finish.
@@ -2885,7 +3056,7 @@ def process_voice_command(heard):
         speak(reply)
         wait_until_speech_done()
 
-    # Shadow just spoke; drop that audio so he
+    # SHADOW just spoke; drop that audio so he
     # cannot hear his own voice as a wake word.
 
     flush_audio_queue()
@@ -2896,13 +3067,13 @@ def process_voice_command(heard):
 def voice_chat_mode():
     print()
     print("[VOICE CHAT] Wake word is ON.")
-    print("[VOICE CHAT] Say 'Shadow' to get my attention.")
-    print("[VOICE CHAT] Say 'Shadow' then your command,")
-    print("[VOICE CHAT] or just 'Shadow' and wait for the beep.")
+    print("[VOICE CHAT] Say 'SHADOW' to get my attention.")
+    print("[VOICE CHAT] Say 'SHADOW' then your command,")
+    print("[VOICE CHAT] or just 'SHADOW' and wait for the beep.")
     print("[VOICE CHAT] Say 'wake word off' for beep mode, or 'exit' to leave.")
     print()
 
-    speak("Voice chat on. Say Shadow to talk to me, sir.")
+    speak("Voice chat on. Say SHADOW to talk to me, sir.")
 
     wait_until_speech_done()
 
@@ -2965,10 +3136,10 @@ def voice_chat_mode():
             if wake_mode:
                 tray_icon.set_state(
                     listening=True,
-                    status_text="listening for Shadow",
+                    status_text="listening for SHADOW",
                 )
 
-                print("[VOICE CHAT] ...listening for 'Shadow'...")
+                print("[VOICE CHAT] ...listening for 'SHADOW'...")
 
                 found, command = listen_for_wake_word(30)
 
@@ -3048,7 +3219,7 @@ def voice_chat_mode():
                 lowered = heard.lower().strip()
 
                 if lowered == "wake word on":
-                    speak("Wake word on. Say Shadow to talk to me.")
+                    speak("Wake word on. Say SHADOW to talk to me.")
                     wait_until_speech_done()
                     flush_audio_queue()
 
@@ -3066,7 +3237,7 @@ def voice_chat_mode():
         except Exception:
             # One bad listen must never kill the
             # whole hands-free session: log it
-            # (Shadow.log keeps it) and try again.
+            # (shadow.log keeps it) and try again.
 
             print("[VOICE CHAT] Loop error:")
 
@@ -3075,7 +3246,7 @@ def voice_chat_mode():
             time.sleep(2.0)
 
 
-def _restart_running_Shadow():
+def _restart_running_shadow():
     # Kill the background autostart pythonw
     # (quote-free PowerShell probe - the -Filter
     # variant silently matched nothing) and
@@ -3090,7 +3261,7 @@ def _restart_running_Shadow():
                 "powershell", "-NoProfile", "-Command",
                 "Get-CimInstance Win32_Process | "
                 "Where-Object { $_.Name -eq 'pythonw.exe' "
-                "-and $_.CommandLine -like '*Shadow.py*' } | "
+                "-and $_.CommandLine -like '*shadow.py*' } | "
                 "ForEach-Object { Stop-Process -Id "
                 "$_.ProcessId -Force }",
             ],
@@ -3108,7 +3279,7 @@ def _restart_running_Shadow():
                     os.path.dirname(
                         os.path.abspath(__file__)
                     ),
-                    "start_Shadow_autostart.vbs",
+                    "start_shadow_autostart.vbs",
                 ),
             ],
             timeout=30,
@@ -3122,7 +3293,7 @@ def main():
     # Terminal health commands, handled before
     # anything else: they must not spawn a
     # second tray icon, speak, or write a new
-    # session banner into Shadow.log.
+    # session banner into shadow.log.
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == "status":
         print(build_status_text())
@@ -3130,8 +3301,8 @@ def main():
         return
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == "mic":
-        # Terminal ear kit: 'Shadow mic' lists what
-        # he can hear through; 'Shadow mic 3' pins
+        # Terminal ear kit: 'shadow mic' lists what
+        # he can hear through; 'shadow mic 3' pins
         # device 3 as his ears and restarts him so
         # it takes effect immediately.
 
@@ -3149,7 +3320,7 @@ def main():
                 "live..."
             )
 
-            _restart_running_Shadow()
+            _restart_running_shadow()
 
             print(
                 "He is waking up on it - about 20 "
@@ -3178,9 +3349,9 @@ def main():
         )
 
         print(
-            f"Shadow training status: "
+            f"SHADOW training status: "
             f"{len(lessons)} lesson(s) taught, "
-            "custom model 'Shadow' active."
+            "custom model 'shadow' active."
         )
         print()
 
@@ -3224,7 +3395,7 @@ def main():
             "  2. Persona edits: edit Modelfile, then"
         )
         print(
-            "     'ollama create Shadow -f Modelfile'"
+            "     'ollama create shadow -f Modelfile'"
         )
         print(
             "     and restart him"
@@ -3242,9 +3413,9 @@ def main():
         # List his drop-in skills (and any
         # broken files) without waking him.
 
-        import Shadow_skills
+        import shadow_skills
 
-        print(Shadow_skills.list_skills_text())
+        print(shadow_skills.list_skills_text())
 
         return
 
@@ -3263,7 +3434,7 @@ def main():
 
             except Exception as check_error:
                 print(
-                    "Shadow update check failed: "
+                    "SHADOW update check failed: "
                     f"{check_error}"
                 )
 
@@ -3271,7 +3442,7 @@ def main():
 
             if behind <= 0:
                 print(
-                    "Shadow update check: already "
+                    "SHADOW update check: already "
                     "up to date. Nothing new on "
                     "GitHub."
                 )
@@ -3279,7 +3450,7 @@ def main():
                 return
 
             print(
-                f"Shadow update check: {behind} new "
+                f"SHADOW update check: {behind} new "
                 "commit(s) waiting on GitHub:"
             )
 
@@ -3287,14 +3458,14 @@ def main():
                 print("  - " + subject)
 
             print(
-                "Run 'Shadow update' to pull "
+                "Run 'shadow update' to pull "
                 "and restart him."
             )
 
             return
 
         # Terminal self-update: pull, then restart
-        # the running Shadow so the new code comes
+        # the running SHADOW so the new code comes
         # alive and he announces the changes on
         # boot. The announcement stays pending
         # until that boot, so he never skips it.
@@ -3307,19 +3478,19 @@ def main():
 
         if not updated:
             print(
-                f"Shadow update: {note}."
+                f"SHADOW update: {note}."
             )
 
             return
 
-        print("Shadow update: pulled " + str(len(subjects)) + " changes:")
+        print("SHADOW update: pulled " + str(len(subjects)) + " changes:")
 
         for subject in subjects:
             print("  - " + subject)
 
         print("Restarting him so it goes live...")
 
-        _restart_running_Shadow()
+        _restart_running_shadow()
 
         print(
             "He is waking up and will tell you "
@@ -3334,24 +3505,24 @@ def main():
         if len(sys.argv) > 2 and sys.argv[2].isdigit():
             lines_to_show = int(sys.argv[2])
 
-        print(tail_Shadow_log(lines_to_show))
+        print(tail_shadow_log(lines_to_show))
 
         return
 
     # Silent mode (pythonw autostart) has no
     # console: everything he prints must also
-    # land in Shadow.log or it is lost forever.
+    # land in shadow.log or it is lost forever.
 
     setup_logging()
 
     print()
     print(
-        f"[Shadow] Session started "
+        f"[SHADOW] Session started "
         f"{time.strftime('%Y-%m-%d %H:%M:%S')}"
     )
 
     print(
-        f"[Shadow] Python {sys.version.split()[0]}, "
+        f"[SHADOW] Python {sys.version.split()[0]}, "
         f"folder {os.getcwd()}"
     )
 
@@ -3371,15 +3542,15 @@ def main():
         tray_icon.start()
 
     except Exception as error:
-        print(f"[Shadow TRAY] Icon unavailable: {error}")
+        print(f"[SHADOW TRAY] Icon unavailable: {error}")
 
     # Launch the desktop window with:
-    #   python Shadow.py gui
+    #   python shadow.py gui
 
     # Laptop-autostart mode: launch with
-    #   python Shadow.py autostart
+    #   python shadow.py autostart
     # He starts straight into hands-free
-    # listening: say "Shadow" and he answers.
+    # listening: say "SHADOW" and he answers.
 
     autostart = (
         len(sys.argv) > 1
@@ -3394,9 +3565,9 @@ def main():
 
     if autostart:
         print("=" * 50)
-        print("Shadow v1.0 - waking with your laptop")
+        print("SHADOW v1.0 - waking with your laptop")
         print("=" * 50)
-        print("Say 'Shadow' any time. Type 'exit' to stop.")
+        print("Say 'SHADOW' any time. Type 'exit' to stop.")
         print()
 
         # Greet softly, warm the ears, then go
@@ -3404,17 +3575,17 @@ def main():
 
         if voice_enabled:
             speak(
-                "I am here, sir. Just say Shadow."
+                "I am here, sir. Just say SHADOW."
             )
 
-        print("[Shadow EARS] Warming up microphone...")
+        print("[SHADOW EARS] Warming up microphone...")
 
         try:
             setup_stt()
 
         except Exception as error:
             print(
-                f"[Shadow EARS] Warm-up failed: {error}"
+                f"[SHADOW EARS] Warm-up failed: {error}"
             )
 
             traceback.print_exc()
@@ -3438,7 +3609,7 @@ def main():
             # A briefing failure must never stop
             # him from listening.
 
-            print("[Shadow] Morning briefing failed:")
+            print("[SHADOW] Morning briefing failed:")
 
             traceback.print_exc()
 
@@ -3458,7 +3629,7 @@ def main():
                 )
 
                 print(
-                    f"[Shadow REMINDER] {task_text}"
+                    f"[SHADOW REMINDER] {task_text}"
                 )
 
                 if voice_enabled:
@@ -3504,7 +3675,7 @@ def main():
                 )
 
                 print(
-                    f"[Shadow ROUTINE] {task_text}"
+                    f"[SHADOW ROUTINE] {task_text}"
                 )
 
                 if not voice_enabled:
@@ -3544,7 +3715,7 @@ def main():
 
         except Exception:
             print(
-                "[Shadow] Reminders failed to start:"
+                "[SHADOW] Reminders failed to start:"
             )
 
             traceback.print_exc()
@@ -3562,7 +3733,7 @@ def main():
 
         except Exception:
             print(
-                "[Shadow] Dashboard failed to start:"
+                "[SHADOW] Dashboard failed to start:"
             )
 
             traceback.print_exc()
@@ -3610,14 +3781,14 @@ def main():
 
         except Exception:
             print(
-                "[Shadow] Boot update check failed:"
+                "[SHADOW] Boot update check failed:"
             )
 
             traceback.print_exc()
 
         # Self-update announcement: if new code
         # landed while he was away (via
-        # 'Shadow update' or a manual pull), he
+        # 'shadow update' or a manual pull), he
         # tells sir what changed - exactly once.
 
         try:
@@ -3656,7 +3827,7 @@ def main():
                 speak(swap_message)
 
         except Exception:
-            print("[Shadow EARS] External mic swap failed:")
+            print("[SHADOW EARS] External mic swap failed:")
 
             traceback.print_exc()
 
@@ -3670,27 +3841,27 @@ def main():
         return
 
     print("=" * 50)
-    print("Shadow v1.0 - your personal AI")
+    print("SHADOW v1.0 - your personal AI")
     print("Local AI Assistant")
     print("=" * 50)
-    print("Shadow: Online.")
+    print("SHADOW: Online.")
     print("Type 'help' for commands, or 'exit' to stop.")
     print()
 
     if voice_enabled:
-        speak("Shadow online. Good to see you, sir.")
+        speak("SHADOW online. Good to see you, sir.")
 
         # Warm up the ears now so the first
         # spoken command is heard from the
         # very first word.
 
-        print("[Shadow EARS] Warming up microphone...")
+        print("[SHADOW EARS] Warming up microphone...")
 
         try:
             setup_stt()
 
         except Exception as error:
-            print(f"[Shadow EARS] Warm-up failed: {error}")
+            print(f"[SHADOW EARS] Warm-up failed: {error}")
 
     tray_icon.set_state(status_text="ready")
 
@@ -3707,7 +3878,7 @@ def main():
                     print(f"You (voice): {user_input}")
 
         except (KeyboardInterrupt, EOFError):
-            print("\nShadow: Goodbye, sir!")
+            print("\nSHADOW: Goodbye, sir!")
             break
 
         if not user_input:
@@ -3716,7 +3887,7 @@ def main():
         lowered = user_input.lower()
 
         if lowered in ("exit", "quit", "bye", "goodbye"):
-            print("Shadow: Goodbye, sir!")
+            print("SHADOW: Goodbye, sir!")
 
             if voice_enabled:
                 speak("Goodbye, sir.")
@@ -3726,7 +3897,7 @@ def main():
         if lowered == "listen":
             listen_mode = True
 
-            print("Shadow: Listening mode ON.")
+            print("SHADOW: Listening mode ON.")
             print("Press Enter to speak, or type normally.")
             print()
 
@@ -3739,7 +3910,7 @@ def main():
             listen_mode = False
             close_stt()
 
-            print("Shadow: Listening mode OFF.")
+            print("SHADOW: Listening mode OFF.")
             print()
 
             if voice_enabled:
@@ -3753,7 +3924,7 @@ def main():
 
         reply = get_response(user_input)
 
-        print(f"Shadow: {reply}")
+        print(f"SHADOW: {reply}")
         print()
 
         if voice_enabled and not reply_already_spoken:

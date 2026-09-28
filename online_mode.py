@@ -1,10 +1,11 @@
 import json
+import os
 import urllib.request
 import urllib.parse
 
 import settings as settings_store
 
-# ---------------- Shadow ONLINE MODE ----------------
+# ---------------- SHADOW ONLINE MODE ----------------
 #
 # Everything here touches the internet, so it
 # lives behind one explicit voice switch
@@ -13,12 +14,17 @@ import settings as settings_store
 # answers honestly instead of silently
 # failing.
 #
-# No API keys, no accounts: weather comes
-# from Open-Meteo (free for non-commercial
-# use), encyclopedia lookups from Wikipedia,
-# and general web search from DuckDuckGo's
-# HTML endpoint. Only text goes out; nothing
-# about his installation or his master.
+# Keyless by default: weather comes from
+# Open-Meteo (free for non-commercial use),
+# encyclopedia lookups from Wikipedia, and
+# general web search from DuckDuckGo's API.
+# The one optional key: Tavily - when sir
+# stores a key, 'search the web for' goes to
+# Tavily first (real web results with an
+# AI answer line) and falls back to the
+# keyless path if the key or network fails.
+# Only text goes out; nothing about his
+# installation or his master.
 
 DEFAULT_CITY = "MyCity"
 
@@ -30,7 +36,7 @@ REQUEST_TIMEOUT = 12
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "Shadow-local-assistant"
+    "SHADOW-local-assistant"
 )
 
 
@@ -80,6 +86,14 @@ def online_status_text():
         + "\n- 'weather' / 'weather tomorrow'"
         + "\n- 'look up <topic>' - Wikipedia"
         + "\n- 'search the web for <topic>'"
+        + (
+            "\n- web search runs via Tavily "
+            "(key stored)"
+            if resolve_tavily_key()
+            else "\n- web search is keyless "
+            "(DuckDuckGo); 'set tavily key "
+            "<key>' upgrades it"
+        )
     )
 
 
@@ -403,6 +417,163 @@ def wiki_lookup(topic):
 
 DDG_STOP_LENGTH = 700
 
+TAVILY_SEARCH_URL = "https://api.tavily.com/search"
+
+TAVILY_SNIPPET_LENGTH = 600
+
+
+def resolve_tavily_key():
+    # Environment first, secrets.json second.
+    # None means "no key - use the keyless
+    # DuckDuckGo path".
+
+    env_key = os.environ.get("TAVILY_API_KEY")
+
+    if env_key and env_key.strip():
+        return env_key.strip()
+
+    try:
+        stored = (
+            settings_store.get_secret(
+                "tavily_api_key"
+            )
+            or ""
+        ).strip()
+
+    except Exception:
+        return None
+
+    return stored or None
+
+
+def _tavily_search(topic):
+    # Real web search via the Tavily API.
+    # Returns a spoken-style answer string,
+    # or None on any failure (no key, dead
+    # network, bad response) so the keyless
+    # fallback takes over silently.
+
+    api_key = resolve_tavily_key()
+
+    if not api_key:
+        return None
+
+    payload = json.dumps({
+        "query": topic,
+        "topic": "general",
+        "search_depth": "basic",
+        "max_results": 4,
+        "include_answer": True,
+    }).encode("utf-8")
+
+    request = urllib.request.Request(
+        TAVILY_SEARCH_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(
+            request, timeout=REQUEST_TIMEOUT
+        ) as response:
+            data = json.loads(
+                response.read().decode(
+                    "utf-8", errors="replace"
+                )
+            )
+
+    except Exception:
+        return None
+
+    answer = (
+        data.get("answer") or ""
+    ).strip()
+
+    results = data.get("results") or []
+
+    if not answer and results:
+        top = results[0]
+
+        snippet = (
+            top.get("content") or ""
+        ).strip()
+
+        if snippet:
+            snippet = snippet[
+                :TAVILY_SNIPPET_LENGTH
+            ]
+
+            cut = snippet.rfind(" ")
+
+            if cut > 150:
+                snippet = snippet[:cut]
+
+            answer = (
+                f"{top.get('title', '')}: "
+                f"{snippet}"
+            ).strip()
+
+    if not answer:
+        return None
+
+    source_names = [
+        (result.get("title") or "")[:40]
+        for result in results[:2]
+        if result.get("title")
+    ]
+
+    tail = ""
+
+    if source_names:
+        tail = (
+            " Sources: "
+            + "; ".join(source_names)
+            + "."
+        )
+
+    return (
+        "From the web via Tavily, sir: "
+        + answer
+        + tail
+    )
+
+
+def set_tavily_key_text(key_value):
+    key_value = (key_value or "").strip()
+
+    if not key_value:
+        return (
+            "Give me the key, sir: 'set tavily "
+            "key <key>'. It is stored only in "
+            "secrets.json on this laptop."
+        )
+
+    settings_store.set_secret(
+        "tavily_api_key", key_value
+    )
+
+    return (
+        "Tavily key saved, sir. 'Search the "
+        "web for' now runs real web search "
+        "while online mode is on - with the "
+        "keyless fallback if it ever fails."
+    )
+
+
+def clear_tavily_key_text():
+    settings_store.set_secret(
+        "tavily_api_key", ""
+    )
+
+    return (
+        "Tavily key cleared, sir. Web search "
+        "returns to the keyless services."
+    )
+
 
 def web_search_text(topic):
     if not is_online_enabled():
@@ -420,6 +591,18 @@ def web_search_text(topic):
             "Say 'search the web for' and "
             "the topic."
         )
+
+    # Tavily first when sir has stored a
+    # key - real web results plus a short
+    # answer line. Any failure returns None
+    # and the keyless path below takes
+    # over, so search never dies with a
+    # key.
+
+    tavily_reply = _tavily_search(topic)
+
+    if tavily_reply:
+        return tavily_reply
 
     # DuckDuckGo's Instant Answer API:
     # keyless, JSON, and friendly to small

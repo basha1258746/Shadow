@@ -12,7 +12,7 @@ try:
 except ImportError:
     pyttsx3 = None
 
-# ---------------- THE VOICE OF Shadow ----------------
+# ---------------- THE VOICE OF SHADOW ----------------
 #
 # Primary: Piper neural TTS with the warm "Amy"
 # voice - vastly more natural than the robotic
@@ -31,7 +31,7 @@ MAX_SPEECH_RATE = 280
 
 PIPER_DIR = "piper_voices"
 
-# Shadow deserves a male British voice.
+# SHADOW deserves a male British voice.
 # These are tried in order; the first one
 # present on disk wins. en_GB-alan is the
 # classic RP butler. If none of the male
@@ -101,7 +101,7 @@ voice_worker = None
 voice_ready = False
 
 # Called after each sentence is spoken so the
-# microphone can drop Shadow's own voice before
+# microphone can drop SHADOW's own voice before
 # it is treated as a wake word or a command.
 
 after_sentence_hook = None
@@ -141,7 +141,7 @@ def _get_piper_voice():
         ).replace(".onnx", "")
 
         print(
-            "[Shadow VOICE] Loading the Piper "
+            "[SHADOW VOICE] Loading the Piper "
             f"neural voice ({voice_name})..."
         )
 
@@ -203,7 +203,7 @@ def _synthesize_to_wav(text):
 
     except Exception as error:
         print(
-            f"[Shadow VOICE] Piper synthesis failed: "
+            f"[SHADOW VOICE] Piper synthesis failed: "
             f"{error} - falling back."
         )
 
@@ -287,13 +287,13 @@ def voice_worker_loop():
             voice_ready = True
 
             print(
-                "[Shadow VOICE] Neural voice ready "
+                "[SHADOW VOICE] Neural voice ready "
                 "(Piper/Amy)."
             )
 
         except Exception as error:
             print(
-                f"[Shadow VOICE] Piper failed to load: "
+                f"[SHADOW VOICE] Piper failed to load: "
                 f"{error} - using Windows voice."
             )
 
@@ -303,7 +303,7 @@ def voice_worker_loop():
 
         if pyttsx3 is None:
             print(
-                "[Shadow VOICE] No speech engine "
+                "[SHADOW VOICE] No speech engine "
                 "available."
             )
 
@@ -317,13 +317,13 @@ def voice_worker_loop():
             voice_ready = True
 
             print(
-                "[Shadow VOICE] Windows voice ready "
+                "[SHADOW VOICE] Windows voice ready "
                 "(Zira)."
             )
 
         except Exception as error:
             print(
-                f"[Shadow VOICE] Could not start voice: "
+                f"[SHADOW VOICE] Could not start voice: "
                 f"{error}"
             )
 
@@ -371,7 +371,7 @@ def voice_worker_loop():
 
             except Exception as error:
                 print(
-                    f"[Shadow VOICE] Speak failed: {error}"
+                    f"[SHADOW VOICE] Speak failed: {error}"
                 )
 
         # Give the audio output a moment to fully
@@ -386,7 +386,7 @@ def voice_worker_loop():
 
             except Exception as error:
                 print(
-                    f"[Shadow VOICE] Self-voice guard "
+                    f"[SHADOW VOICE] Self-voice guard "
                     f"failed: {error}"
                 )
 
@@ -575,7 +575,7 @@ def play_ear_cone():
 
         winsound.Beep(1760, 110)
 
-        print("[Shadow VOICE] Ear-cone chime (no command after the wake word).")
+        print("[SHADOW VOICE] Ear-cone chime (no command after the wake word).")
 
     except Exception:
         # No chime is ever worth crashing over.
@@ -623,7 +623,7 @@ def get_speech_rate():
 
 
 if __name__ == "__main__":
-    print("Shadow VOICE OUTPUT TEST")
+    print("SHADOW VOICE OUTPUT TEST")
 
     if setup_voice():
         print(
@@ -631,7 +631,7 @@ if __name__ == "__main__":
         )
 
         speak(
-            "Hello sir. I am Shadow, your personal "
+            "Hello sir. I am SHADOW, your personal "
             "AI companion. Do you like my new voice?"
         )
 

@@ -56,6 +56,6 @@ def get_system_info_text():
 
 if __name__ == "__main__":
 
-    print("Shadow SYSTEM INFORMATION")
+    print("SHADOW SYSTEM INFORMATION")
     print("-" * 40)
     print(get_system_info_text())

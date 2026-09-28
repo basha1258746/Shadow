@@ -18,7 +18,7 @@ def test_wake_words_present():
     # every variant matters.
 
     required = (
-        "Shadow", "Shadow", "zoe",
+        "shadow", "Shadow", "zoe",
         "sonya", "joya", "jo",
     )
 
@@ -35,7 +35,7 @@ def test_wake_grammar_covers_words():
 
     grammar = json_grammar()
 
-    for word in ("Shadow", "Shadow"):
+    for word in ("shadow", "Shadow"):
         assert word in grammar, (
             f"grammar lost {word}"
         )
@@ -64,9 +64,9 @@ def test_filler_strip():
 
     assert (
         voice_input._clean_command(
-            "the Shadow the"
+            "the shadow the"
         )
-        == "Shadow"
+        == "shadow"
     )
 
     assert voice_input._clean_command(

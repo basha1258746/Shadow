@@ -2,21 +2,21 @@
 # Ollama as a live model.
 #
 # You ran training/finetune_colab.ipynb on a
-# free GPU, downloaded Shadow-lora.zip, and
-# unzipped it here (training/Shadow-lora/).
+# free GPU, downloaded shadow-lora.zip, and
+# unzipped it here (training/shadow-lora/).
 # This script wires it into Ollama:
 #
 #   python training/import_lora.py
 #
 # Steps it performs:
-#   1. Find the adapter (training/Shadow-lora/)
+#   1. Find the adapter (training/shadow-lora/)
 #   2. Get llama.cpp's converter (shallow clone)
 #   3. Convert the adapter to GGUF
 #   4. Export the base model to GGUF (one time)
-#   5. Create the Ollama model "Shadow-tuned"
+#   5. Create the Ollama model "shadow-tuned"
 #
-# Then point Shadow at it: set
-# MODEL = "Shadow-tuned" in Shadow.py.
+# Then point SHADOW at it: set
+# MODEL = "shadow-tuned" in shadow.py.
 
 import os
 import subprocess
@@ -29,7 +29,7 @@ TRAINING_DIR = os.path.dirname(
 REPO_DIR = os.path.dirname(TRAINING_DIR)
 
 ADAPTER_DIR = os.path.join(
-    TRAINING_DIR, "Shadow-lora"
+    TRAINING_DIR, "shadow-lora"
 )
 
 LLAMA_CPP_DIR = os.path.join(
@@ -37,7 +37,7 @@ LLAMA_CPP_DIR = os.path.join(
 )
 
 ADAPTER_GGUF = os.path.join(
-    TRAINING_DIR, "Shadow-lora.gguf"
+    TRAINING_DIR, "shadow-lora.gguf"
 )
 
 BASE_GGUF = os.path.join(
@@ -65,7 +65,7 @@ def main():
         )
         print(
             "Run training/finetune_colab.ipynb in "
-            "Colab, download Shadow-lora.zip, and "
+            "Colab, download shadow-lora.zip, and "
             "unzip it into training/."
         )
         sys.exit(1)
@@ -164,7 +164,7 @@ def main():
         )
 
     result = run([
-        "ollama", "create", "Shadow-tuned",
+        "ollama", "create", "shadow-tuned",
         "-f", modelfile_path,
     ])
 
@@ -175,13 +175,13 @@ def main():
     step("DONE")
 
     print(
-        'Model "Shadow-tuned" is ready. Try it:'
+        'Model "shadow-tuned" is ready. Try it:'
     )
-    print('  ollama run Shadow-tuned "Who are you?"')
+    print('  ollama run shadow-tuned "Who are you?"')
     print()
-    print("To make Shadow use it permanently:")
-    print('  set MODEL = "Shadow-tuned" in '
-          "Shadow.py, then restart him.")
+    print("To make SHADOW use it permanently:")
+    print('  set MODEL = "shadow-tuned" in '
+          "shadow.py, then restart him.")
     print()
 
 

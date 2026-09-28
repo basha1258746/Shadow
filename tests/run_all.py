@@ -1,4 +1,4 @@
-# Shadow regression suite runner.
+# SHADOW regression suite runner.
 #
 #   python tests/run_all.py
 #
@@ -27,6 +27,7 @@ MODULES = (
     "test_memory_and_settings",
     "test_reminders",
     "test_dashboard",
+    "test_cloud_brain",
 )
 
 
@@ -34,7 +35,7 @@ def main():
     total_failures = 0
 
     print("=" * 46)
-    print("Shadow regression suite")
+    print("SHADOW regression suite")
     print("=" * 46)
 
     for module_name in MODULES:
