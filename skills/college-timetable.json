@@ -1,0 +1,10 @@
+{
+    "name": "college timetable",
+    "description": "today's class timings, pasted by sir",
+    "match": ["timetable", "class timings", "college timetable"],
+    "steps": [
+        {
+            "say": "Here is the sample timetable, sir - edit skills/college-timetable.json with your real schedule. Monday: Engineering Mathematics 9-10, Physics 10-11, Workshop 2-4. Tuesday: Programming 9-10, Maths 11-12. Wednesday: Physics 9-10, Workshop 2-4. Thursday: Programming 9-10, Maths 2-3. Friday: Electronics 11-12, CAD lab 2-4."
+        }
+    ]
+}

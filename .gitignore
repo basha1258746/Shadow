@@ -16,10 +16,15 @@ backups/
 # Old debug leftovers
 shadow_debug.py
 python shadow_debug.py
+jarvis_debug.py
+python jarvis_debug.py
 
-# Runtime diagnostics log
+# Runtime diagnostics log (legacy zoya name
+# kept so old files stay ignored)
 Shadow.log
 shadow.log
+jarvis.log
+zoya.log
 
 # Self-update state (changelog of the last pull)
 last_update.json
@@ -48,6 +53,8 @@ tests/_scratch_*.json
 tests/_s*.json
 
 
-# Re-hear probe evidence
+# Re-hear probe evidence (legacy zoya name kept)
 Shadow_probe.wav
 shadow_probe.wav
+zoya_probe.wav
+jarvis_probe.wav
