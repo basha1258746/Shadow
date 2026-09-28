@@ -1,0 +1,8 @@
+{
+    "name": "clock",
+    "description": "the current time and date, read from the laptop clock",
+    "match": ["what time is it", "time", "what is the time", "tell me the time", "current time", "what day is it", "what is the date", "today's date"],
+    "steps": [
+        { "run": "powershell -NoProfile -Command Get-Date" }
+    ]
+}
