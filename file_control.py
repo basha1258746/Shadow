@@ -6,7 +6,7 @@ FOLDERS = {
     "desktop": os.path.join(os.path.expanduser("~"), "Desktop"),
     "documents": os.path.join(os.path.expanduser("~"), "Documents"),
     "downloads": os.path.join(os.path.expanduser("~"), "Downloads"),
-    "shadow": r"C:\Users\us448\SHADOW",
+    "shadow": r"C:\Users\us448\JARVIS",
 }
 
 
