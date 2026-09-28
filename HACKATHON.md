@@ -169,3 +169,118 @@ reminders, real timetable, real names. Fresh demo user profile.
 - **Quality of the Idea** — "the cloud is a settings switch" is the
   thesis: local-first as the default, Nemotron as the upgrade, fallback
   as a contract — not a demo-day patch.
+
+---
+
+## 9. Devpost submission description — PASTE-READY
+
+Copy everything inside the fence below into the Devpost
+"Project Description" field (it accepts Markdown):
+
+```markdown
+# SHADOW — a private AI butler that thinks with NVIDIA Nemotron
+
+**Personal AI Track** · SHADOW is a local-first, always-on assistant for
+Windows that answers to your voice, remembers you, runs your daily
+routines — and lets you decide, moment by moment, whether he thinks on
+your laptop or on NVIDIA's open models at Nebius Token Factory.
+
+## The problem
+
+Every mainstream assistant quietly trades your privacy for convenience:
+your voice, your questions, your habits and your schedule flow to a
+cloud you don't control. The opposite extreme — a fully offline assistant
+— has always meant accepting a weak brain. **SHADOW refuses both
+compromises.** His default brain runs entirely on your laptop. His cloud
+brain — NVIDIA's open Nemotron models on Nebius Token Factory — is a
+settings switch you flip when *you* want deeper thinking, with the local
+brain permanently standing by as fallback.
+
+## What SHADOW does today (all working, 54 automated tests green)
+
+- **Hears his name from across the room** — grammar-restricted wake-word
+  recognition with soundalike safety nets, one-breath commands ("Shadow,
+  what time is it" — no beep needed), and a second-chance net that
+  recovers fast, mangled attempts. All local speech-to-text.
+- **Talks back while he thinks** — sentence-by-sentence neural TTS
+  (British butler voice); answers begin speaking before generation ends.
+- **Remembers you** — persistent personal facts, project notes, and a
+  lessons channel: *"learn that I take the 8:40 bus"* is honored from
+  then on, in every future conversation.
+- **Runs your daily workflows** — one-shot and recurring reminders fired
+  in his own voice, and **routines that act**: "every day at 9 read the
+  briefing and my reminders" actually performs the briefing aloud.
+- **Controls the PC with permission** — mouse, keyboard, apps, files,
+  screen reading, document Q&A (PDF + OCR), semantic search over your
+  own files — every action behind allowlists and explicit confirmation.
+- **Supervises himself** — a live localhost dashboard (reminders,
+  lessons, skills, streaming chat), a PIN-gated phone client on your
+  LAN, and self-updates: he checks GitHub, upgrades himself, and speaks
+  his own changelog on boot.
+- **Teaches you new tricks without code** — drop a JSON file into his
+  skills folder and it works on his very next listen.
+
+## The dual brain: Nebius Token Factory + NVIDIA Nemotron
+
+Say **"nebius on"** and SHADOW routes his thinking to **Nebius Token
+Factory's** OpenAI-compatible endpoint:
+
+- **NVIDIA Nemotron 3 Nano** (`nvidia/nemotron-3-nano-30b`) handles the
+  fast, everyday calls — keeping him responsive and the credits
+  stretching.
+- **NVIDIA Nemotron 3 Super** (`nvidia/nemotron-3-super-120b-a12b`) takes
+  over for reasoning-heavy questions — *why / explain / compare /
+  design* — or long, complex prompts. The routing is per-message, and
+  model IDs are settings, not code.
+
+Both brains receive the exact same butler system prompt, so his voice
+never changes — only his depth. Streaming uses the SSE wire directly
+(stdlib-only, no client SDK), with private `<think>` reasoning stripped
+in transit. And the contract that makes it production-shaped: **any
+cloud failure — missing key, HTTP error, dead wifi — returns him to the
+local brain automatically.** He is never mute because the wire is down.
+
+When online, his web search can run through the **Tavily API** for real
+web results with spoken source attribution — with a keyless fallback so
+search never dies with a key.
+
+## Privacy by architecture, not by promise
+
+- His memory, reminders, lessons, and chat history live in gitignored
+  files on your disk. Nothing syncs anywhere.
+- The online gate and the cloud brain both default **OFF**. He never
+  touches the internet unless you explicitly say so, and even then only
+  the words of your current request leave the machine.
+- API keys live in a gitignored secrets file or environment variables —
+  never in the repo, never spoken back, regression-tested.
+- Computer control is allowlist-only with a spoken yes/no gate for every
+  action; screenshots happen only when you ask.
+
+## Why it's credible
+
+SHADOW was not built for this hackathon weekend — he is a months-long,
+commit-by-commit build on real hardware: a 2023-vintage i3 laptop with
+**8 GB of RAM**, no GPU. Every layer (wake word, TTS, memory, reminders,
+dashboard, cloud brain) has a regression test, and the tests have caught
+real bugs. One student, one laptop, one complete assistant.
+
+## Try him
+
+Clone the repo, install Ollama + a few pip packages, and he runs with
+zero cloud dependencies and zero API keys. `nebius on` is optional —
+that's the point.
+
+*SHADOW is an independent open-source project (Apache-2.0), not
+affiliated with or endorsed by any studio or commercial product.*
+```
+
+### After pasting, complete the form with:
+
+- **Track:** Personal AI
+- **Demo URL / video:** record per the script in §4 (wake word is now
+  "Shadow"; no copyrighted music; scrub personal data)
+- **Repo URL:** https://github.com/basha1258746/Shadow
+- **Updated-during-period essay:** §3 above
+- **Feedback section:** §7 above
+- **Testing instructions for judges:** README Quick Start + (optionally)
+  a `nebius on` walkthrough with your key rotated before/after judging
