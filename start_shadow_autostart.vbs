@@ -4,6 +4,6 @@
 
 Set WshShell = CreateObject("WScript.Shell")
 
-WshShell.CurrentDirectory = "C:\Users\us448\Shadow"
+WshShell.CurrentDirectory = "C:\Users\us448\JARVIS"
 
-WshShell.Run """C:\Users\us448\AppData\Local\Python\pythoncore-3.14-64\pythonw.exe"" ""C:\Users\us448\Shadow\shadow.py"" autostart", 0, False
+WshShell.Run """C:\Users\us448\AppData\Local\Python\pythoncore-3.14-64\pythonw.exe"" ""C:\Users\us448\JARVIS\shadow.py"" autostart", 0, False

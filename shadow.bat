@@ -9,14 +9,14 @@ rem whatever 'python' is on PATH.
 set "PY=python"
 if exist "C:\Users\us448\AppData\Local\Python\pythoncore-3.14-64\python.exe" set "PY=C:\Users\us448\AppData\Local\Python\pythoncore-3.14-64\python.exe"
 
-if /i "%~1"=="status" %PY% "C:\Users\us448\Shadow\shadow.py" status & goto :done
-if /i "%~1"=="log" %PY% "C:\Users\us448\Shadow\shadow.py" log %~2 & goto :done
-if /i "%~1"=="mic" %PY% "C:\Users\us448\Shadow\shadow.py" mic %~2 & goto :done
-if /i "%~1"=="skills" %PY% "C:\Users\us448\Shadow\shadow.py" skills & goto :done
-if /i "%~1"=="train" %PY% "C:\Users\us448\Shadow\shadow.py" train & goto :done
-if /i "%~1"=="update" %PY% "C:\Users\us448\Shadow\shadow.py" update %~2 & goto :done
+if /i "%~1"=="status" %PY% "C:\Users\us448\JARVIS\shadow.py" status & goto :done
+if /i "%~1"=="log" %PY% "C:\Users\us448\JARVIS\shadow.py" log %~2 & goto :done
+if /i "%~1"=="mic" %PY% "C:\Users\us448\JARVIS\shadow.py" mic %~2 & goto :done
+if /i "%~1"=="skills" %PY% "C:\Users\us448\JARVIS\shadow.py" skills & goto :done
+if /i "%~1"=="train" %PY% "C:\Users\us448\JARVIS\shadow.py" train & goto :done
+if /i "%~1"=="update" %PY% "C:\Users\us448\JARVIS\shadow.py" update %~2 & goto :done
 if /i "%~1"=="start" (
-    cscript //nologo "C:\Users\us448\Shadow\start_shadow_autostart.vbs"
+    cscript //nologo "C:\Users\us448\JARVIS\start_shadow_autostart.vbs"
     echo SHADOW is waking up - give him about 20 seconds to warm his ears.
     goto :done
 )
