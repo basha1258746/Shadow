@@ -16,10 +16,12 @@ import os
 # console at all: stdout/stderr are None, so
 # guard the reconfigure and the prints.
 
-if sys.stdout is not None:
+if sys.stdout is not None and hasattr(
+        sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(errors="replace")
 
-if sys.stderr is not None:
+if sys.stderr is not None and hasattr(
+        sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(errors="replace")
 
 class _LogTee:
@@ -210,6 +212,12 @@ NEBIUS_FALLBACK_NOTE = (
     "[SHADOW] Cloud brain unavailable - "
     "using the local brain."
 )
+
+# Announced aloud at most once per session,
+# so a long cloud outage does not have him
+# interrupting every answer with the news.
+
+_nebius_fallback_spoken = False
 MEMORY_FILE = "memory.json"
 MAX_HISTORY = 12
 VOICE_ENABLED = True
@@ -765,6 +773,7 @@ def chat_streaming_to_dashboard(
 
 def chat(user_text):
     global reply_already_spoken
+    global _nebius_fallback_spoken
 
     messages = [
         {
@@ -830,6 +839,28 @@ def chat(user_text):
 
             if nebius_answer is None:
                 print(NEBIUS_FALLBACK_NOTE)
+
+                # Say it aloud once per session
+                # only when nothing has been
+                # spoken yet this reply and no
+                # dashboard/phone page is the
+                # output device - a mid-stream
+                # system note would corrupt the
+                # page's sentence flow.
+
+                if (
+                    spoken_count["value"] == 0
+                    and _dashboard_sink is None
+                    and voice_enabled
+                    and not _nebius_fallback_spoken
+                ):
+                    _nebius_fallback_spoken = True
+
+                    speak(
+                        "The cloud is unreachable, "
+                        "sir - thinking locally "
+                        "instead."
+                    )
 
     except Exception as error:
         print(f"[SHADOW] Cloud brain error: {error}")

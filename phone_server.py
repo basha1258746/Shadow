@@ -1,6 +1,7 @@
 import json
 import random
 import socket
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -481,10 +482,20 @@ class PhoneHandler(BaseHTTPRequestHandler):
                 pass
 
         with brain_lock:
-            import shadow
+            # Live brain first (see shadow.py's
+            # top-level comment): a plain import
+            # would re-run his stdout setup and
+            # crash under pythonw.
+
+            brain = sys.modules.get("__main__")
+
+            if not hasattr(brain, "chat_streaming_to_dashboard"):
+                import shadow
+
+                brain = shadow
 
             reply = (
-                shadow
+                brain
                 .chat_streaming_to_dashboard(
                     text, on_piece
                 )
@@ -592,9 +603,18 @@ class PhoneHandler(BaseHTTPRequestHandler):
             # One brain at a time.
 
             with brain_lock:
-                import shadow
+                # Live brain first - a re-import
+                # would re-run his top level and
+                # crash under pythonw.
 
-                reply = shadow.get_response(text)
+                brain = sys.modules.get("__main__")
+
+                if not hasattr(brain, "get_response"):
+                    import shadow
+
+                    brain = shadow
+
+                reply = brain.get_response(text)
 
                 who = "user"
 

@@ -353,9 +353,30 @@ def test_tavily_search(settings, nb, om):
         "online_enabled", True
     )
 
-    reply = om.web_search_text("test topic")
+    # Hermetic: break every keyless fetch so
+    # the ONLY way this search can succeed is
+    # through the Tavily branch. Otherwise a
+    # transient mock hiccup would silently
+    # fall back to the real DuckDuckGo and
+    # the assertion would fail confusingly.
 
-    assert "via Tavily" in reply
+    def _no_internet(url):
+        raise OSError("hermetic test")
+
+    original_fetch = om._fetch_json
+
+    om._fetch_json = _no_internet
+
+    try:
+        reply = om.web_search_text("test topic")
+
+    finally:
+        om._fetch_json = original_fetch
+
+    assert "via Tavily" in reply, (
+        f"tavily branch failed, reply was: "
+        f"{reply!r}"
+    )
 
     assert "test answer" in reply
 

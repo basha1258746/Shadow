@@ -1,5 +1,6 @@
 import json
 import socket
+import sys
 import threading
 import webbrowser
 from datetime import datetime
@@ -575,9 +576,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
 
         with brain_lock:
-            import shadow
+            # Reuse the LIVE brain (shadow.py
+            # running as __main__ under the
+            # autostart launcher) instead of
+            # re-importing: importing the module
+            # here would re-execute its top level
+            # - including the stdout setup, which
+            # crashes when stdout is already his
+            # log tee. Fall back to the import
+            # only when he runs standalone (tests).
 
-            reply = shadow.get_response(text)
+            brain = sys.modules.get("__main__")
+
+            if not hasattr(brain, "get_response"):
+                import shadow
+
+                brain = shadow
+
+            reply = brain.get_response(text)
 
             history.append(
                 {"who": "user", "text": text})
@@ -746,10 +762,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 pass
 
         with brain_lock:
-            import shadow
+            # Live brain first (see the note in
+            # _chat): re-importing would run his
+            # top level again and crash under
+            # pythonw.
+
+            brain = sys.modules.get("__main__")
+
+            if not hasattr(brain, "chat_streaming_to_dashboard"):
+                import shadow
+
+                brain = shadow
 
             reply = (
-                shadow
+                brain
                 .chat_streaming_to_dashboard(
                     text, on_piece)
             )
