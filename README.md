@@ -10,7 +10,7 @@ A **local-first AI companion** for Windows — he hears you, talks with you, see
 
 | Ability | How to use it |
 |---|---|
-| 🧠 **Local brain** | Just talk to his — Qwen3 (1.7B) via Ollama, fully offline |
+| 🧠 **Local brain** | Just talk to him — Qwen3 (1.7B) via Ollama, fully offline |
 | ⚡ **Cloud brain (opt-in)** | `nebius on` → he thinks with **NVIDIA Nemotron 3** on **Nebius Token Factory**; fast Nano for chat, bigger Super for hard questions; falls back to local automatically |
 | 🎙 **Hears you** | `voice chat` → say **"SHADOW"** → beep → talk. Or skip the beep: **"SHADOW what time is it"** in one breath (offline Vosk STT + wake grammar) |
 | 🗣 **Talks to you** | Sentence-by-sentence speech while he thinks; `speak faster` / `slower` |
@@ -52,7 +52,7 @@ curl -L -o vosk-model-en-us-0.22-lgraph.zip https://alphacephei.com/vosk/models/
 ```
 Extract the folder next to the code (128 MB, best accuracy-per-megabyte; the tiny 40 MB `vosk-model-small-en-us-0.15` works too — he picks automatically and falls back gracefully).
 
-### 4. Run his
+### 4. Run him
 
 ```
 python shadow.py          # terminal + voice
@@ -174,8 +174,8 @@ source of truth), so these work from **cmd, PowerShell, anywhere**:
 ```
 shadow status      is he running? brain online? what did he last hear? errors?
 shadow log [N]     his last N log lines of the current session (default 40)
-shadow start       wake his now (same as laptop boot)
-shadow stop        put his to sleep
+shadow start       wake him now (same as laptop boot)
+shadow stop        put him to sleep
 shadow skills      his drop-in skills (and any broken files)
 shadow update check    just report what is new on GitHub, pull nothing
 shadow update      pull his latest code and restart his
@@ -201,7 +201,7 @@ pin those by hand: `shadow mic 29`.
 
 ### Self-updates — he upgrades himself
 
-SHADOW watches his own GitHub repo (`basha1258746/SHADOW`, private). Two ways in,
+SHADOW watches his own GitHub repo (`basha1258746/Shadow`). Two ways in,
 both safe by design:
 
 - **`shadow update check`** (or say *"SHADOW, check for updates"*) — fetches and
